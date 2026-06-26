@@ -27,6 +27,3 @@ This system uses a highly optimized concurrent orchestration pipeline:
 ```bash
 docker-compose up --build
 ```
-
-- Backend API: http://localhost:8000
-- Frontend: http://localhost:3000
