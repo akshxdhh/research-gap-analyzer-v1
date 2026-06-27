@@ -54,28 +54,94 @@ class DuckDuckGoProvider(BaseWebSearchProvider):
             ))
         return results
 
-class WebSearchService:
-    def __init__(self, provider: BaseWebSearchProvider):
-        self.provider = provider
+class TavilyProvider(BaseWebSearchProvider):
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.tavily.com/search"
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def _execute_search(self, func, *args, **kwargs):
-        return func(*args, **kwargs)
-
-    def search_general(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
-        """General web search for blogs and recent research."""
-        return self._execute_search(self.provider.search, query, num_results)
+    def search(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
+        import httpx
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "api_key": self.api_key,
+            "query": query,
+            "search_depth": "basic",
+            "max_results": num_results
+        }
+        with httpx.Client() as client:
+            response = client.post(self.base_url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for r in data.get("results", []):
+                results.append(WebSearchResult(
+                    title=r.get("title", ""),
+                    snippet=r.get("content", ""),
+                    url=r.get("url", ""),
+                    source="Tavily"
+                ))
+            return results
 
     def search_news(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
-        """Search the latest AI news."""
-        return self._execute_search(self.provider.search_news, query, num_results)
+        # Tavily can do news if topic="news"
+        import httpx
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "api_key": self.api_key,
+            "query": query,
+            "topic": "news",
+            "max_results": num_results
+        }
+        with httpx.Client() as client:
+            response = client.post(self.base_url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for r in data.get("results", []):
+                results.append(WebSearchResult(
+                    title=r.get("title", ""),
+                    snippet=r.get("content", ""),
+                    url=r.get("url", ""),
+                    source="Tavily News"
+                ))
+            return results
+
+class WebSearchService:
+    def __init__(self, providers: List[BaseWebSearchProvider]):
+        self.providers = providers
+
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=5))
+    def _execute_search_single_provider(self, func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    def _execute_search_with_fallback(self, method_name: str, query: str, num_results: int) -> List[WebSearchResult]:
+        last_exception = None
+        for provider in self.providers:
+            func = getattr(provider, method_name)
+            try:
+                results = self._execute_search_single_provider(func, query, num_results)
+                if results:
+                    return results
+            except Exception as e:
+                logger.warning(f"{provider.__class__.__name__} failed: {e}")
+                last_exception = e
+        
+        if last_exception:
+            logger.error("All web search providers failed.")
+        return []
+
+    def search_general(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
+        return self._execute_search_with_fallback("search", query, num_results)
+
+    def search_news(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
+        return self._execute_search_with_fallback("search_news", query, num_results)
 
     def search_github(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
-        """Search for GitHub repositories specifically."""
         github_query = f"{query} site:github.com"
-        return self._execute_search(self.provider.search, github_query, num_results)
+        return self._execute_search_with_fallback("search", github_query, num_results)
 
     def search_framework_docs(self, query: str, framework: str, num_results: int = 5) -> List[WebSearchResult]:
-        """Search specific framework documentation (e.g. PyTorch, LangChain)."""
         docs_query = f"{query} {framework} documentation"
-        return self._execute_search(self.provider.search, docs_query, num_results)
+        return self._execute_search_with_fallback("search", docs_query, num_results)

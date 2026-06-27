@@ -38,7 +38,7 @@ class PlannerAgent:
         Provide your reasoning for this specific execution plan.
         """
         
-        response_dict = self.llm.generate_structured_json(prompt, ExecutionPlan.schema())
+        response_dict = self.llm.generate_structured_json(prompt, ExecutionPlan.model_json_schema())
         # Override plan_id dynamically to ensure uniqueness rather than relying on LLM hallucination
         response_dict["plan_id"] = str(uuid.uuid4())
         return ExecutionPlan(**response_dict)

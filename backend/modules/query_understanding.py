@@ -28,5 +28,5 @@ class QueryUnderstandingService:
         """
         
         # In a real implementation with LangChain/OpenAI, we would pass the Pydantic schema natively.
-        response_dict = self.llm.generate_structured_json(prompt, QueryUnderstandingOutput.schema())
+        response_dict = self.llm.generate_structured_json(prompt, QueryUnderstandingOutput.model_json_schema())
         return QueryUnderstandingOutput(**response_dict)

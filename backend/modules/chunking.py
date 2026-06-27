@@ -71,6 +71,31 @@ class PDFProcessor:
     def __init__(self):
         self.chunker = Chunker()
         
-    def process_pdf(self, file_path: str) -> List[Chunk]:
-        # Dummy implementation for tests/stub
-        return []
+    def process_pdf(self, file_path: str, paper_id: str | None = None) -> List[Chunk]:
+        try:
+            import fitz
+        except ImportError as exc:
+            raise RuntimeError("PyMuPDF (fitz) package is not installed.") from exc
+
+        doc = fitz.open(file_path)
+        chunks: List[Chunk] = []
+        resolved_paper_id = paper_id or uuid.uuid4().hex
+
+        for page_index in range(len(doc)):
+            page = doc.load_page(page_index)
+            text = (page.get_text() or "").strip()
+            if not text:
+                continue
+
+            metadata = ChunkMetadata(
+                paper_id=resolved_paper_id,
+                page_number=page_index + 1,
+                section=None,
+                extra_metadata={"source_file": file_path},
+            )
+            chunks.extend(self.chunker.chunk_text(text, metadata))
+
+        if not chunks:
+            raise ValueError("No extractable text found in PDF.")
+
+        return chunks

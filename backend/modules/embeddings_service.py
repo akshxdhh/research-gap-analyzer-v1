@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
 import hashlib
-import json
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -17,38 +16,31 @@ class BaseEmbeddingProvider(ABC):
 class BGEProvider(BaseEmbeddingProvider):
     def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
         self.model_name = model_name
-        # In a real app, initialize HuggingFaceBgeEmbeddings here
-        
+        self._model = None
+
+    def _get_model(self):
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as exc:
+                raise RuntimeError("sentence-transformers package is not installed.") from exc
+            self._model = SentenceTransformer(self.model_name)
+        return self._model
+
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        # Mock implementation
         logger.info(f"BGEProvider generating embeddings for {len(texts)} texts.")
-        return [[0.1, 0.2, 0.3] for _ in texts]
-
-class OpenAIProvider(BaseEmbeddingProvider):
-    def __init__(self, api_key: str, model_name: str = "text-embedding-3-small"):
-        self.api_key = api_key
-        self.model_name = model_name
-        
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        # Mock implementation
-        logger.info(f"OpenAIProvider generating embeddings for {len(texts)} texts.")
-        return [[0.4, 0.5, 0.6] for _ in texts]
-
-class NomicProvider(BaseEmbeddingProvider):
-    def __init__(self, api_key: str, model_name: str = "nomic-embed-text-v1.5"):
-        self.api_key = api_key
-        self.model_name = model_name
-        
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        # Mock implementation
-        logger.info(f"NomicProvider generating embeddings for {len(texts)} texts.")
-        return [[0.7, 0.8, 0.9] for _ in texts]
+        embeddings = self._get_model().encode(
+            texts,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return [embedding.tolist() for embedding in embeddings]
 
 class EmbeddingService:
     def __init__(self, provider: BaseEmbeddingProvider, batch_size: int = 100):
         self.provider = provider
         self.batch_size = batch_size
-        self._cache = {} # Simple in-memory cache
+        self._cache = {}
 
     def _get_hash(self, text: str) -> str:
         return hashlib.md5(text.encode("utf-8")).hexdigest()

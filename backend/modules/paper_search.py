@@ -106,36 +106,35 @@ class ArxivProvider(BasePaperProvider):
             return papers
 
 
-class CoreProvider(BasePaperProvider):
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.base_url = "https://api.core.ac.uk/v3/search/works"
+class OpenAlexProvider(BasePaperProvider):
+    def __init__(self, email: str = "research@example.com"):
+        self.email = email
+        self.base_url = "https://api.openalex.org/works"
         
     def search(self, query: str, page: int = 1, page_size: int = 10) -> List[ExternalPaper]:
-        offset = (page - 1) * page_size
-        headers = {"Authorization": f"Bearer {self.api_key}"}
         params = {
-            "q": query,
-            "offset": offset,
-            "limit": page_size
+            "search": query,
+            "page": page,
+            "per-page": page_size,
+            "mailto": self.email
         }
         
         with httpx.Client() as client:
-            response = client.get(self.base_url, params=params, headers=headers)
+            response = client.get(self.base_url, params=params)
             response.raise_for_status()
             data = response.json()
             
             papers = []
             for item in data.get("results", []):
-                authors = [a.get("name", "") for a in item.get("authors", [])]
+                authors = [a.get("author", {}).get("display_name", "") for a in item.get("authorships", [])]
                 papers.append(ExternalPaper(
                     title=item.get("title", ""),
                     authors=authors,
-                    abstract=item.get("abstract", "") or "",
-                    url=item.get("downloadUrl") or item.get("sourceUrl"),
-                    year=item.get("yearPublished"),
-                    venue=item.get("publisher"),
-                    source="CORE",
+                    abstract=str(item.get("abstract_inverted_index", "") or ""),
+                    url=item.get("doi") or item.get("id"),
+                    year=item.get("publication_year"),
+                    venue=item.get("primary_location", {}).get("source", {}).get("display_name", ""),
+                    source="OpenAlex",
                     external_id=str(item.get("id", ""))
                 ))
             return papers

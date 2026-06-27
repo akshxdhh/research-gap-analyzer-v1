@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+from models.chunk import Chunk
 from modules.vector_search import VectorSearchService
 from modules.vector_db.keyword_repo import BM25KeywordRepository
 from modules.hybrid_ranker import HybridRanker
@@ -17,6 +18,25 @@ class LocalRAGOrchestrator:
         self.vector_search = vector_search
         self.keyword_search = keyword_search
         self.hybrid_ranker = hybrid_ranker
+
+    def index_chunks(self, chunks: List[Chunk], collection_name: str) -> bool:
+        if not chunks:
+            return True
+
+        ids = [chunk.id for chunk in chunks]
+        texts = [chunk.text for chunk in chunks]
+        metadata = [
+            {
+                "paper_id": chunk.metadata.paper_id,
+                "page_number": chunk.metadata.page_number,
+                "section": chunk.metadata.section,
+                **chunk.metadata.extra_metadata,
+            }
+            for chunk in chunks
+        ]
+        self.vector_search.index_chunks(chunks, collection_name)
+        self.keyword_search.insert(ids=ids, texts=texts, metadata=metadata)
+        return True
 
     def retrieve(self, query: str, collection_name: str, top_k: int = 5, filter_dict: Optional[Dict[str, Any]] = None) -> List[RetrievedContext]:
         """

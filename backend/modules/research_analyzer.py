@@ -46,7 +46,7 @@ class ResearchAnalyzerService:
         {context_text}
         """
         
-        response_dict = self.llm.generate_structured_json(prompt, AnalysisOutput.schema())
+        response_dict = self.llm.generate_structured_json(prompt, AnalysisOutput.model_json_schema())
         analysis = AnalysisOutput(**response_dict)
         
         # Post-hoc processing: Override naive LLM confidence with actual retrieval scores

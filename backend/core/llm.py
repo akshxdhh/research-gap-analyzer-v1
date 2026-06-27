@@ -1,5 +1,6 @@
-import json
 from abc import ABC, abstractmethod
+import json
+import re
 from typing import Any
 
 class BaseLLMProvider(ABC):
@@ -8,71 +9,93 @@ class BaseLLMProvider(ABC):
     def generate_structured_json(self, prompt: str, schema: Any) -> dict:
         raise NotImplementedError
 
-class OpenAILLMProvider(BaseLLMProvider):
-    """
-    OpenAI implementation utilizing strict structured outputs (json_schema)
-    to guarantee Pydantic schema adherence without ValidationError crashes.
-    """
-    def __init__(self, api_key: str, model: str = "gpt-4o"):
-        self.api_key = api_key
-        self.model = model
+class GeminiLLMProvider(BaseLLMProvider):
+    """Gemini-backed structured JSON provider."""
+
+    def __init__(self, api_key: str, model: str):
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY is required for LLM execution.")
+
         try:
-            import openai
-            self.client = openai.OpenAI(api_key=api_key)
-        except ImportError:
-            self.client = None
+            import google.generativeai as genai
+        except ImportError as exc:
+            raise RuntimeError("google-generativeai package is not installed.") from exc
+
+        genai.configure(api_key=api_key)
+        self.client = genai.GenerativeModel(model)
+
+    def _extract_json(self, text: str) -> dict:
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?", "", cleaned).strip()
+            cleaned = re.sub(r"```$", "", cleaned).strip()
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+            if not match:
+                raise
+            return json.loads(match.group(0))
 
     def generate_structured_json(self, prompt: str, schema: Any) -> dict:
-        if not self.client:
-            raise RuntimeError("openai package is not installed.")
-            
-        json_schema = {
-            "name": "response_schema",
-            "strict": True,
-            "schema": schema
-        }
-
-        if "additionalProperties" not in json_schema["schema"]:
-            json_schema["schema"]["additionalProperties"] = False
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that strictly outputs JSON matching the requested schema."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={
-                "type": "json_schema", 
-                "json_schema": json_schema
-            }
+        full_prompt = (
+            f"{prompt}\n\n"
+            "Return only valid JSON. The JSON must satisfy this schema exactly:\n"
+            f"{json.dumps(schema)}"
         )
-        return json.loads(response.choices[0].message.content)
+        response = self.client.generate_content(
+            full_prompt,
+            generation_config={"response_mime_type": "application/json"},
+        )
+        return self._extract_json(response.text)
+
 
 class GroqLLMProvider(BaseLLMProvider):
-    """
-    Groq implementation utilizing json_object.
-    """
+    """Groq-backed structured JSON provider."""
+
     def __init__(self, api_key: str, model: str = "llama3-70b-8192"):
-        self.api_key = api_key
-        self.model = model
+        if not api_key:
+            raise ValueError("GROQ_API_KEY is required for LLM execution.")
+
         try:
-            import openai
-            self.client = openai.OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
-        except ImportError:
-            self.client = None
+            from groq import Groq
+        except ImportError as exc:
+            raise RuntimeError("groq package is not installed.") from exc
+
+        self.client = Groq(api_key=api_key)
+        self.model = model
+
+    def _extract_json(self, text: str) -> dict:
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?", "", cleaned).strip()
+            cleaned = re.sub(r"```$", "", cleaned).strip()
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+            if not match:
+                raise
+            return json.loads(match.group(0))
 
     def generate_structured_json(self, prompt: str, schema: Any) -> dict:
-        if not self.client:
-            raise RuntimeError("openai package is not installed.")
-            
-        full_prompt = prompt + f"\n\nYou MUST return ONLY a valid JSON object satisfying this exact schema: {json.dumps(schema)}"
-        
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that strictly outputs valid JSON."},
-                {"role": "user", "content": full_prompt}
-            ],
-            response_format={"type": "json_object"}
+        full_prompt = (
+            f"{prompt}\n\n"
+            "Return ONLY a valid JSON object. Do not include markdown formatting or explanation. The JSON must satisfy this schema exactly:\n"
+            f"{json.dumps(schema)}"
         )
-        return json.loads(response.choices[0].message.content)
+        
+        chat_completion = self.client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": full_prompt,
+                }
+            ],
+            model=self.model,
+            response_format={"type": "json_object"},
+        )
+        
+        return self._extract_json(chat_completion.choices[0].message.content)
