@@ -1,65 +1,158 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { useAppStore } from "@/store/useAnalysisStore";
+import { api } from "@/lib/api";
+import { Activity, BookOpen, Layers, Lightbulb, FolderKanban } from "lucide-react";
+import Link from "next/link";
+
+function MetricCard({ title, value, subtitle, icon: Icon }: any) {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        <div className="p-2 bg-primary/5 rounded-md">
+          <Icon className="w-4 h-4 text-primary" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
+      <div>
+        <div className="text-2xl font-semibold text-foreground">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+      </div>
     </div>
   );
+}
+
+export default function Dashboard() {
+  const { projects, setProjects, papers, setPapers, gaps, setGaps } = useAppStore();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const [projRes, papersRes, gapsRes] = await Promise.all([
+          api.getProjects(),
+          api.getPapers(),
+          api.getGaps(),
+        ]);
+        setProjects(projRes);
+        setPapers(papersRes);
+        setGaps(gapsRes);
+      } catch (error) {
+        console.error("Dashboard failed to load:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDashboard();
+  }, [setProjects, setPapers, setGaps]);
+
+  return (
+    <div className="p-8 h-full flex flex-col space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
+        <p className="text-muted-foreground">Welcome back. Here is your research intelligence summary.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard title="Active Projects" value={loading ? "-" : projects.length} subtitle="+1 this week" icon={FolderKanban} />
+        <MetricCard title="Indexed Papers" value={loading ? "-" : papers.length} subtitle="+12 this month" icon={BookOpen} />
+        <MetricCard title="Inferred Gaps" value={loading ? "-" : gaps.length} subtitle="Novel opportunities" icon={Lightbulb} />
+        <MetricCard title="Analyses Run" value={loading ? "-" : "24"} subtitle="Total processing runs" icon={Activity} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+          <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+            <FolderKanban className="w-5 h-5 text-muted-foreground" />
+            Recent Projects
+          </h3>
+          <div className="flex-1">
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2].map(i => (
+                  <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                <FolderKanban className="w-8 h-8 opacity-20" />
+                <p>No active projects</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.map(p => (
+                  <Link key={p.id} href={`/projects`} className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors">
+                    <div>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">Created {p.created_at}</div>
+                    </div>
+                    <span className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-md">{p.status}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+          <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-muted-foreground" />
+            Recent Papers
+          </h3>
+          <div className="flex-1">
+            {loading ? (
+               <div className="space-y-4">
+               {[1, 2].map(i => (
+                 <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />
+               ))}
+             </div>
+            ) : papers.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                <BookOpen className="w-8 h-8 opacity-20" />
+                <p>No papers indexed</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {papers.map(p => (
+                  <Link key={p.id} href={`/library`} className="flex items-center p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors">
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center mr-4">
+                      <FileTextIcon className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm line-clamp-1">{p.title}</div>
+                      <div className="text-xs text-muted-foreground">{p.authors} ({p.year})</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FileTextIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" x2="8" y1="13" y2="13" />
+      <line x1="16" x2="8" y1="17" y2="17" />
+      <line x1="10" x2="8" y1="9" y2="9" />
+    </svg>
+  )
 }

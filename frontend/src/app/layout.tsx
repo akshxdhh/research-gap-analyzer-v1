@@ -16,16 +16,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-        <div className="flex h-screen overflow-hidden">
-          <div className="hidden md:block">
-            <Sidebar />
-          </div>
-          <main className="flex-1 md:ml-64 overflow-y-auto">
-            <div className="max-w-6xl mx-auto p-4 md:p-8">
-              {children}
-            </div>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-background text-foreground selection:bg-primary selection:text-primary-foreground`}>
+        <div className="flex h-screen w-full overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 flex flex-col h-screen overflow-y-auto bg-background/95 relative border-l border-border/50">
+            {children}
           </main>
         </div>
       </body>
