@@ -87,13 +87,27 @@ const apiClient = axios.create({
 // --- Interceptors ---
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
+    const config: any = error.config;
+    
     // We handle global API errors here. 
-    // In the future, this can trigger a global toast via Zustand.
     console.error("API Error Response:", error.response?.data || error.message);
+    
     if (!error.response) {
       console.error("Backend might be offline or CORS failed.");
     }
+
+    // Auto-retry network errors or 5xx errors up to 2 times (for non-POST requests)
+    if (config && (!config._retryCount || config._retryCount < 2) && config.method !== 'post') {
+      config._retryCount = (config._retryCount || 0) + 1;
+      
+      // Exponential backoff
+      const backoffDelay = Math.pow(2, config._retryCount) * 1000;
+      await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      
+      return apiClient(config);
+    }
+
     return Promise.reject(error);
   }
 );

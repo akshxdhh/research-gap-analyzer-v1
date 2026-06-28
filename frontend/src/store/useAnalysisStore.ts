@@ -31,7 +31,8 @@ export const useAnalysisStore = create<AppState>((set) => ({
       const res = await api.getProjects();
       set({ projects: res || [], isLoading: false });
     } catch (err: any) {
-      set({ error: err.message, isLoading: false, projects: [] });
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to load projects";
+      set({ error: msg, isLoading: false, projects: [] });
     }
   },
 
@@ -41,7 +42,8 @@ export const useAnalysisStore = create<AppState>((set) => ({
       const res = await api.getPapers();
       set({ papers: res || [], isLoading: false });
     } catch (err: any) {
-      set({ error: err.message, isLoading: false, papers: [] });
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to load papers";
+      set({ error: msg, isLoading: false, papers: [] });
     }
   },
 
@@ -51,7 +53,8 @@ export const useAnalysisStore = create<AppState>((set) => ({
       const res = await api.getGaps();
       set({ gaps: res || [], isLoading: false });
     } catch (err: any) {
-      set({ error: err.message, isLoading: false, gaps: [] });
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to load gaps";
+      set({ error: msg, isLoading: false, gaps: [] });
     }
   }
 }));

@@ -28,6 +28,28 @@ app.include_router(projects.router)
 app.include_router(papers.router)
 app.include_router(gaps.router)
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Log the exception for the server console
+    import traceback
+    traceback.print_exc()
+    
+    # Return 500 with CORS headers to avoid 'Network Error' masking in browser
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in settings.cors_origins or "*" in settings.cors_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "message": str(exc)},
+        headers=headers
+    )
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Welcome to the Research Gap Analyzer API"}
