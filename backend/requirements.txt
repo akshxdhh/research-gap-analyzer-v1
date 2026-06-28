@@ -8,7 +8,6 @@ langchain-text-splitters
 tenacity
 chromadb
 qdrant-client
-Whoosh 
 sentence-transformers
 sqlalchemy
 psycopg[binary]
@@ -22,3 +21,4 @@ python-docx
 Jinja2
 tiktoken
 PyMuPDF
+supabase

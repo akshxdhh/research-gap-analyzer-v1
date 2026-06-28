@@ -147,18 +147,16 @@ class PaperSearchService:
     """
     def __init__(self, providers: List[BasePaperProvider]):
         self.providers = providers
-        self._cache = {}
-        # Rate limit delay in seconds (simple implementation for cross-provider rate limiting)
+        # Rate limit delay in seconds
         self.rate_limit_delay = 1.0 
-
-    def _get_cache_key(self, provider_name: str, query: str, page: int) -> str:
-        raw_key = f"{provider_name}_{query}_{page}"
-        return hashlib.md5(raw_key.encode()).hexdigest()
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def _execute_search_with_retry(self, provider: BasePaperProvider, query: str, page: int, page_size: int):
         return provider.search(query, page, page_size)
 
+    from modules.cache import with_cache
+
+    @with_cache(key_prefix="paper_search", ttl=3600)
     def search(self, query: str, page: int = 1, page_size: int = 10) -> List[ExternalPaper]:
         """
         Executes a paginated search across all registered providers, aggregates the results, 
@@ -168,21 +166,12 @@ class PaperSearchService:
         
         for provider in self.providers:
             provider_name = provider.__class__.__name__
-            cache_key = self._get_cache_key(provider_name, query, page)
-            
-            if cache_key in self._cache:
-                all_papers.extend(self._cache[cache_key])
-                continue
-                
             try:
                 # Respect rate limits before hitting external API
                 time.sleep(self.rate_limit_delay)
                 
                 # Execute with resilience
                 papers = self._execute_search_with_retry(provider, query, page, page_size)
-                
-                # Cache results
-                self._cache[cache_key] = papers
                 all_papers.extend(papers)
                 
             except Exception as e:
@@ -190,4 +179,13 @@ class PaperSearchService:
                 import logging
                 logging.getLogger(__name__).warning(f"Provider {provider_name} failed: {e}")
                 
-        return all_papers
+        # Deduplicate results based on title (lowercase)
+        seen_titles = set()
+        deduplicated_papers = []
+        for paper in all_papers:
+            clean_title = paper.title.lower().strip()
+            if clean_title and clean_title not in seen_titles:
+                seen_titles.add(clean_title)
+                deduplicated_papers.append(paper)
+                
+        return deduplicated_papers

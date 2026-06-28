@@ -44,7 +44,7 @@ class PaperModel(Base):
     authors = Column(JSON, default=list)
     year = Column(Integer)
     filename = Column(String(512), nullable=False)
-    storage_path = Column(Text, nullable=False)
+    cloud_url = Column(Text, nullable=True)  # Store Supabase URL here
     chunk_count = Column(Integer, nullable=False, default=0)
     upload_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 

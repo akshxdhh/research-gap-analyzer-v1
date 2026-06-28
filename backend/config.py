@@ -12,35 +12,35 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_prefix: str = "/api/v1"
 
-    database_url: str = "postgresql+psycopg://research:research@localhost:5432/research_gap"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+psycopg://user:password@hostname/dbname"
+    redis_url: str = ""
 
     groq_api_key: Optional[str] = None
-    groq_model: str = "llama3-70b-8192"
+    groq_model: str = "llama-3.3-70b-versatile"
 
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-1.5-flash"
 
     semantic_scholar_api_key: Optional[str] = None
     tavily_api_key: Optional[str] = None
+    openalex_email: Optional[str] = None
 
-    chroma_host: str = "localhost"
-    chroma_port: int = 8001
-    chroma_persist_directory: str = "./chroma_db"
+    qdrant_url: Optional[str] = None
+    qdrant_api_key: Optional[str] = None
     vector_collection_name: str = "research_papers"
 
-    qdrant_host: str = "localhost"
-    qdrant_port: int = 6333
+    supabase_url: Optional[str] = None
+    supabase_service_role_key: Optional[str] = None
+    supabase_storage_bucket: str = "research_gap_pdfs"
 
     embedding_model_name: str = "BAAI/bge-small-en-v1.5"
     bm25_index_dir: str = "./whoosh_index"
 
-    upload_dir: str = "./uploads"
     temp_dir: str = "./temp"
     max_upload_bytes: int = 25 * 1024 * 1024
     context_max_tokens: int = 4000
 
-    cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: List[str] = Field(default_factory=lambda: ["*"])
 
     model_config = SettingsConfigDict(
         env_file=".env",

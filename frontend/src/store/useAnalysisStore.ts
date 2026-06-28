@@ -1,45 +1,57 @@
 import { create } from 'zustand';
-import { AnalysisOutput, Project, Paper, ResearchGap } from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface AppState {
-  // Global System State
-  isBackendOnline: boolean;
-  setBackendOnline: (status: boolean) => void;
-  globalError: string | null;
-  setGlobalError: (error: string | null) => void;
+  projects: any[];
+  papers: any[];
+  gaps: any[];
+  isLoading: boolean;
+  error: string | null;
+  analysisResult: any | null;
   
-  // Analysis State
-  analysis: AnalysisOutput | null;
-  isAnalyzing: boolean;
-  setAnalysis: (analysis: AnalysisOutput) => void;
-  setIsAnalyzing: (status: boolean) => void;
-  clearAnalysis: () => void;
-
-  // Cached Data State
-  projects: Project[];
-  setProjects: (projects: Project[]) => void;
-  papers: Paper[];
-  setPapers: (papers: Paper[]) => void;
-  gaps: ResearchGap[];
-  setGaps: (gaps: ResearchGap[]) => void;
+  setAnalysisResult: (result: any) => void;
+  refreshProjects: () => Promise<void>;
+  refreshPapers: () => Promise<void>;
+  refreshGaps: () => Promise<void>;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  isBackendOnline: true,
-  setBackendOnline: (status) => set({ isBackendOnline: status }),
-  globalError: null,
-  setGlobalError: (error) => set({ globalError: error }),
-
-  analysis: null,
-  isAnalyzing: false,
-  setAnalysis: (analysis) => set({ analysis, isAnalyzing: false, globalError: null }),
-  setIsAnalyzing: (status) => set({ isAnalyzing: status }),
-  clearAnalysis: () => set({ analysis: null }),
-
+export const useAnalysisStore = create<AppState>((set) => ({
   projects: [],
-  setProjects: (projects) => set({ projects }),
   papers: [],
-  setPapers: (papers) => set({ papers }),
   gaps: [],
-  setGaps: (gaps) => set({ gaps }),
+  isLoading: false,
+  error: null,
+  analysisResult: null,
+
+  setAnalysisResult: (result) => set({ analysisResult: result }),
+
+  refreshProjects: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.getProjects();
+      set({ projects: res || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message, isLoading: false, projects: [] });
+    }
+  },
+
+  refreshPapers: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.getPapers();
+      set({ papers: res || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message, isLoading: false, papers: [] });
+    }
+  },
+
+  refreshGaps: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await api.getGaps();
+      set({ gaps: res || [], isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message, isLoading: false, gaps: [] });
+    }
+  }
 }));

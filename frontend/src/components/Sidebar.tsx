@@ -3,90 +3,79 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Upload, 
-  BarChart, 
-  FileText, 
-  Search,
-  BookOpen,
-  LayoutDashboard,
-  FolderKanban,
-  GitCompareArrows,
-  Settings
+  LayoutDashboard, 
+  UploadCloud, 
+  BookOpen, 
+  Sparkles, 
+  Target, 
+  FileDown, 
+  Settings,
+  Brain
 } from "lucide-react";
-import clsx from "clsx";
+import { motion } from "framer-motion";
 
-const topNavItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Upload", href: "/upload", icon: Upload },
+const navItems = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Upload", href: "/upload", icon: UploadCloud },
   { name: "Library", href: "/library", icon: BookOpen },
+  { name: "Analysis", href: "/analysis", icon: Sparkles },
+  { name: "Research Gaps", href: "/gaps", icon: Target },
+  { name: "Reports", href: "/reports", icon: FileDown },
 ];
-
-const analysisItems = [
-  { name: "Analysis", href: "/analysis", icon: Search },
-  { name: "Research Gaps", href: "/gaps", icon: BarChart },
-  { name: "Comparison", href: "/comparison", icon: GitCompareArrows },
-  { name: "Reports", href: "/reports", icon: FileText },
-];
-
-const bottomNavItems = [
-  { name: "Settings", href: "/settings", icon: Settings },
-];
-
-function NavGroup({ title, items, pathname }: { title?: string, items: any[], pathname: string }) {
-  return (
-    <div className="mb-6">
-      {title && <h4 className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">{title}</h4>}
-      <ul className="space-y-1">
-        {items.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <li key={item.name}>
-              <Link
-                href={item.href}
-                className={clsx(
-                  "flex items-center gap-3 px-4 py-2 text-sm rounded-lg transition-all duration-200",
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium shadow-sm"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                )}
-              >
-                <Icon className={clsx("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                {item.name}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 bg-background text-foreground flex flex-col h-full flex-shrink-0 border-r border-border">
+    <div className="hidden md:flex flex-col w-64 h-screen border-r border-border/50 glass z-50">
       <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Search className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+          <Brain className="w-6 h-6 text-primary" />
         </div>
-        <h1 className="text-lg font-semibold tracking-tight">GapAnalyzer</h1>
+        <span className="font-bold text-lg tracking-tight">Gap Analyzer</span>
       </div>
-      
-      <nav className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
-        <NavGroup items={topNavItems} pathname={pathname} />
-        <NavGroup title="Intelligence" items={analysisItems} pathname={pathname} />
+
+      <nav className="flex-1 px-4 py-6 flex flex-col gap-2 overflow-y-auto">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-3">
+          Menu
+        </div>
+        
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          
+          return (
+            <Link 
+              key={item.name} 
+              href={item.href}
+              className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isActive && (
+                <motion.div 
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 bg-primary/10 rounded-xl border border-primary/20 glow-primary"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              <item.icon className={`w-5 h-5 relative z-10 ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary transition-colors"}`} />
+              <span className="font-medium relative z-10">{item.name}</span>
+            </Link>
+          );
+        })}
+
+        <div className="mt-auto pt-6 border-t border-border/50">
+          <Link 
+            href="/settings"
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 ${
+              pathname === "/settings" ? "bg-primary/10 text-primary border border-primary/20 glow-primary" : "text-muted-foreground hover:bg-card-hover hover:text-foreground"
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">Settings</span>
+          </Link>
+        </div>
       </nav>
-      
-      <div className="p-3">
-        <NavGroup items={bottomNavItems} pathname={pathname} />
-        <div className="mt-4 px-4 py-3 rounded-lg bg-card border border-border/50 flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-medium text-muted-foreground">System Online</span>
-        </div>
-      </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ from modules.hybrid_ranker import HybridRanker
 from modules.local_rag import LocalRAGOrchestrator
 from modules.metadata_search import MetadataSearchService
 from modules.paper_search import ArxivProvider, OpenAlexProvider, PaperSearchService, SemanticScholarProvider
-from modules.vector_db.chroma_repo import ChromaRepository
+
 from modules.vector_db.keyword_repo import BM25KeywordRepository
 from modules.vector_search import VectorSearchService
 from modules.web_search import DuckDuckGoProvider, TavilyProvider, WebSearchService
@@ -52,11 +52,18 @@ def get_embedding_service() -> EmbeddingService:
 
 
 def get_vector_search_service() -> VectorSearchService:
-    vector_db = ChromaRepository(
-        persist_directory=settings.chroma_persist_directory,
-        host=settings.chroma_host,
-        port=settings.chroma_port,
-    )
+    if settings.qdrant_url and settings.qdrant_api_key:
+        from modules.vector_db.qdrant_repo import QdrantRepository
+        vector_db = QdrantRepository(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key,
+        )
+    else:
+        from modules.vector_db.chroma_repo import ChromaRepository
+        import logging
+        logging.getLogger(__name__).warning("Qdrant config missing, falling back to local ChromaDB.")
+        vector_db = ChromaRepository(persist_directory="./chroma_db")
+        
     return VectorSearchService(vector_db=vector_db, embedding_service=get_embedding_service())
 
 

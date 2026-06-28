@@ -54,7 +54,7 @@ class GeminiLLMProvider(BaseLLMProvider):
 class GroqLLMProvider(BaseLLMProvider):
     """Groq-backed structured JSON provider."""
 
-    def __init__(self, api_key: str, model: str = "llama3-70b-8192"):
+    def __init__(self, api_key: str, model: str = "llama-3.3-70b-versatile"):
         if not api_key:
             raise ValueError("GROQ_API_KEY is required for LLM execution.")
 

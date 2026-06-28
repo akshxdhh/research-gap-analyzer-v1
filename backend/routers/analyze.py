@@ -6,7 +6,9 @@ from dependencies import (
     get_query_understanding_service,
     get_planner_agent,
     get_context_merger,
-    get_research_analyzer
+    get_research_analyzer,
+    get_web_search_service,
+    get_paper_search_service
 )
 from modules.query_understanding import QueryUnderstandingService
 from modules.planner import PlannerAgent
@@ -18,13 +20,15 @@ from modules.metadata_search import MetadataSearchService
 
 router = APIRouter(prefix="/api/v1/analyze", tags=["Analysis"])
 
-@router.post("/", response_model=AnalysisOutput)
+@router.post("", response_model=AnalysisOutput)
 async def analyze_query(
     request: AnalyzeRequest,
     qu_service: QueryUnderstandingService = Depends(get_query_understanding_service),
     planner: PlannerAgent = Depends(get_planner_agent),
     merger: ContextMerger = Depends(get_context_merger),
-    analyzer: ResearchAnalyzerService = Depends(get_research_analyzer)
+    analyzer: ResearchAnalyzerService = Depends(get_research_analyzer),
+    web_search: WebSearchService = Depends(get_web_search_service),
+    paper_search: PaperSearchService = Depends(get_paper_search_service)
 ):
     """
     Main orchestration endpoint.
@@ -42,8 +46,6 @@ async def analyze_query(
         execution_plan = planner.generate_plan(qu_output)
         
         # 3. Execution (Sequential or Concurrent)
-        web_search = WebSearchService()
-        paper_search = PaperSearchService()
         
         web_results = []
         paper_results = []

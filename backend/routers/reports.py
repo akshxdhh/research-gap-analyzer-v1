@@ -9,7 +9,7 @@ from modules.report_exporter import ReportExporter
 
 router = APIRouter(prefix="/api/v1/reports", tags=["Reports"])
 
-@router.post("/")
+@router.post("")
 async def generate_report(
     request: GenerateReportRequest,
     generator: ReportGeneratorService = Depends(get_report_generator),

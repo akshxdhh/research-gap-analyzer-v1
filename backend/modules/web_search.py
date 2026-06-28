@@ -132,16 +132,22 @@ class WebSearchService:
             logger.error("All web search providers failed.")
         return []
 
+    from modules.cache import with_cache
+    
+    @with_cache(key_prefix="web_search", ttl=3600)
     def search_general(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
         return self._execute_search_with_fallback("search", query, num_results)
 
+    @with_cache(key_prefix="web_search_news", ttl=3600)
     def search_news(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
         return self._execute_search_with_fallback("search_news", query, num_results)
 
+    @with_cache(key_prefix="web_search_github", ttl=3600)
     def search_github(self, query: str, num_results: int = 5) -> List[WebSearchResult]:
         github_query = f"{query} site:github.com"
         return self._execute_search_with_fallback("search", github_query, num_results)
 
+    @with_cache(key_prefix="web_search_docs", ttl=3600)
     def search_framework_docs(self, query: str, framework: str, num_results: int = 5) -> List[WebSearchResult]:
         docs_query = f"{query} {framework} documentation"
         return self._execute_search_with_fallback("search", docs_query, num_results)
