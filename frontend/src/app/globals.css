@@ -7,14 +7,14 @@
   --color-card: rgba(15, 15, 25, 0.8);
   --color-card-hover: rgba(25, 25, 35, 0.9);
   
-  --color-primary: #8b5cf6;
-  --color-primary-foreground: #ffffff;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #000000;
   
-  --color-accent: #06b6d4;
-  --color-accent-foreground: #ffffff;
+  --color-accent: #d4d4d8;
+  --color-accent-foreground: #000000;
   
-  --color-border: rgba(139, 92, 246, 0.15);
-  --color-border-hover: rgba(139, 92, 246, 0.3);
+  --color-border: rgba(255, 255, 255, 0.15);
+  --color-border-hover: rgba(255, 255, 255, 0.3);
   
   --color-muted: #27272a;
   --color-muted-foreground: #a1a1aa;
@@ -32,8 +32,8 @@
   body {
     @apply bg-background text-foreground antialiased min-h-screen selection:bg-primary/30 selection:text-primary-foreground;
     background-image: 
-      radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+      radial-gradient(circle at 15% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
     background-attachment: fixed;
   }
 }
@@ -43,7 +43,7 @@
 }
 
 .glass-card {
-  @apply bg-card backdrop-blur-xl border border-border shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)] rounded-lg transition-all duration-300 hover:border-border-hover hover:shadow-[0_8px_32px_-4px_rgba(139,92,246,0.15)] hover:-translate-y-1;
+  @apply bg-card backdrop-blur-xl border border-border shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)] rounded-lg transition-all duration-300 hover:border-border-hover hover:shadow-[0_8px_32px_-4px_rgba(255,255,255,0.1)] hover:-translate-y-1;
 }
 
 .glass-panel {
@@ -51,15 +51,15 @@
 }
 
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-400 to-accent;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-400 to-gray-600;
 }
 
 .glow-primary {
-  box-shadow: 0 0 20px -5px var(--color-primary);
+  box-shadow: 0 0 20px -5px rgba(255, 255, 255, 0.3);
 }
 
 .glow-accent {
-  box-shadow: 0 0 20px -5px var(--color-accent);
+  box-shadow: 0 0 20px -5px rgba(255, 255, 255, 0.2);
 }
 
 /* Custom Scrollbar */
