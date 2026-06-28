@@ -7,13 +7,15 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {
-  const { projects, papers, gaps, isLoading, error, refreshProjects, refreshPapers, refreshGaps } = useAnalysisStore();
+  const { projects, papers, gaps, isLoading, error, refreshProjects, refreshPapers, refreshGaps, startPolling, stopPolling } = useAnalysisStore();
 
   useEffect(() => {
     refreshProjects();
     refreshPapers();
     refreshGaps();
-  }, [refreshProjects, refreshPapers, refreshGaps]);
+    startPolling();
+    return () => stopPolling();
+  }, [refreshProjects, refreshPapers, refreshGaps, startPolling, stopPolling]);
 
   const stats = [
     { label: "Active Projects", value: projects.length, icon: Layers, color: "text-blue-400" },

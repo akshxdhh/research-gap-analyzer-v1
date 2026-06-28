@@ -34,7 +34,7 @@ class ResearchAnalyzerService:
         1. Extract: Methodologies, Datasets, Metrics, Results, Limitations, Future Work.
         2. Compare papers and explicitly detect any contradictions in results or conclusions.
         3. Detect recurring limitations across multiple sources.
-        4. Infer novel research gaps based on the limitations and future work.
+        4. Infer novel research gaps. For each gap, you MUST provide a catchy title, a category (e.g., Methodological, Theoretical), a detailed description, a novelty score (0.0 to 1.0), suggested methodologies to solve the gap, potential datasets to use, and related papers.
         5. Return ONLY structured JSON. DO NOT generate conversational text.
         
         CRITICAL CITATION RULE:

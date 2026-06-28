@@ -11,6 +11,7 @@ export default function MobileHeader() {
   const pathname = usePathname();
 
   const navItems = [
+    { name: "Home", href: "/" },
     { name: "Dashboard", href: "/dashboard" },
     { name: "Upload", href: "/upload" },
     { name: "Library", href: "/library" },

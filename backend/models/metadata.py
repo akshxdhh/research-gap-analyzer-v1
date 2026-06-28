@@ -23,6 +23,40 @@ class PaperMetadataModel(Base):
     )
 
 
+class SettingsModel(Base):
+    __tablename__ = "settings"
+
+    id = Column(String, primary_key=True, default="default")
+    
+    # User
+    user_name = Column(String, nullable=True)
+    user_email = Column(String, nullable=True)
+    user_avatar = Column(String, nullable=True)
+    user_organization = Column(String, nullable=True)
+    user_research_interests = Column(JSON, default=list)
+
+    # Application
+    app_theme = Column(String, default="system") # dark, light, system
+    app_default_report_format = Column(String, default="pdf")
+    app_default_citation_style = Column(String, default="apa")
+    app_default_llm = Column(String, default="llama3-70b-8192")
+    app_retrieval_depth = Column(Integer, default=5)
+    app_search_provider_priority = Column(JSON, default=["semantic_scholar", "arxiv", "openalex"])
+
+    # AI
+    ai_preferred_model = Column(String, default="llama3-70b-8192")
+    ai_temperature = Column(Float, default=0.2)
+    ai_max_tokens = Column(Integer, default=4000)
+    ai_context_size = Column(Integer, default=8192)
+
+    # Notifications (booleans)
+    notif_upload_completed = Column(Integer, default=1)
+    notif_analysis_completed = Column(Integer, default=1)
+    notif_report_generated = Column(Integer, default=1)
+
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 class ProjectModel(Base):
     __tablename__ = "projects"
 
@@ -60,6 +94,18 @@ class ResearchGapModel(Base):
 
     id = Column(String, primary_key=True)
     query = Column(Text, nullable=False)
+    
+    # New requested fields
+    title = Column(String(512), nullable=True)
+    category = Column(String(255), nullable=True)
+    novelty_score = Column(Float, nullable=True)
+    supporting_papers = Column(JSON, default=list)
+    future_research_direction = Column(Text, nullable=True)
+    suggested_methodology = Column(Text, nullable=True)
+    potential_dataset = Column(Text, nullable=True)
+    related_papers = Column(JSON, default=list)
+
+    # Existing fields
     description = Column(Text, nullable=False)
     confidence = Column(Float, nullable=False)
     evidence_citations = Column(JSON, default=list)

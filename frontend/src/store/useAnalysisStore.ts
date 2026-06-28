@@ -13,14 +13,19 @@ interface AppState {
   refreshProjects: () => Promise<void>;
   refreshPapers: () => Promise<void>;
   refreshGaps: () => Promise<void>;
+  
+  pollingInterval: number | null;
+  startPolling: () => void;
+  stopPolling: () => void;
 }
 
-export const useAnalysisStore = create<AppState>((set) => ({
+export const useAnalysisStore = create<AppState>((set, get) => ({
   projects: [],
   papers: [],
   gaps: [],
   isLoading: false,
   error: null,
+  pollingInterval: null,
   analysisResult: null,
 
   setAnalysisResult: (result) => set({ analysisResult: result }),
@@ -55,6 +60,25 @@ export const useAnalysisStore = create<AppState>((set) => ({
     } catch (err: any) {
       const msg = err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to load gaps";
       set({ error: msg, isLoading: false, gaps: [] });
+    }
+  },
+
+  startPolling: () => {
+    if (get().pollingInterval) return;
+    const interval = setInterval(() => {
+      // Don't set isLoading during polling to prevent UI flicker
+      api.getProjects().then(res => set({ projects: res || [] })).catch(console.error);
+      api.getPapers().then(res => set({ papers: res || [] })).catch(console.error);
+      api.getGaps().then(res => set({ gaps: res || [] })).catch(console.error);
+    }, 5000) as unknown as number;
+    set({ pollingInterval: interval });
+  },
+
+  stopPolling: () => {
+    const interval = get().pollingInterval;
+    if (interval) {
+      clearInterval(interval);
+      set({ pollingInterval: null });
     }
   }
 }));

@@ -91,10 +91,14 @@ apiClient.interceptors.response.use(
     const config: any = error.config;
     
     // We handle global API errors here. 
-    console.error("API Error Response:", error.response?.data || error.message);
+    // Silence intentional background check timeouts in the console.
+    if (error.code !== "ECONNABORTED") {
+      console.error("API Error Response:", error.response?.data || error.message);
+    }
     
-    if (!error.response) {
-      console.error("Backend might be offline or CORS failed.");
+    if (!error.response && error.code !== "ECONNABORTED") {
+      // Do not use console.error for network failures as it causes turbopack overlay spam.
+      // The UI will handle offline states gracefully via Toast or Badges.
     }
 
     // Auto-retry network errors or 5xx errors up to 2 times (for non-POST requests)
@@ -141,7 +145,12 @@ export const api = {
   
   // Status
   getStatus: async (): Promise<any> => {
-    const response = await apiClient.get("/status", { timeout: 5000 });
+    const response = await apiClient.get("/status", { timeout: 3000 });
+    return response.data;
+  },
+  
+  refreshStatus: async (): Promise<any> => {
+    const response = await apiClient.post("/status/refresh", {}, { timeout: 15000 });
     return response.data;
   },
 
@@ -161,5 +170,16 @@ export const api = {
   getGaps: async (): Promise<ResearchGap[]> => {
     const response = await apiClient.get("/gaps");
     return response.data || [];
+  },
+
+  // Settings
+  getSettings: async (): Promise<any> => {
+    const response = await apiClient.get("/settings");
+    return response.data;
+  },
+  
+  updateSettings: async (updates: any): Promise<any> => {
+    const response = await apiClient.put("/settings", updates);
+    return response.data;
   }
 };

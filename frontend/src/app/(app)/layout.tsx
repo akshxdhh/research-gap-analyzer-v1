@@ -14,6 +14,9 @@ export default function AppLayout({
         <div className="flex-1 p-4 md:p-8">
           {children}
         </div>
+        <footer className="w-full text-center py-6 text-sm text-muted-foreground border-t border-border/50 mt-auto">
+          © 2026 Research Gap Analyzer. All Rights Reserved.
+        </footer>
       </main>
     </div>
   );

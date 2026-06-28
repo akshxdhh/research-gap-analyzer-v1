@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import upload, analyze, reports, status, projects, papers, gaps
+from routers import upload, analyze, reports, status, projects, papers, gaps, settings
 
 app = FastAPI(
     title="Research Gap Analyzer API",
@@ -8,12 +8,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-from config import settings
+from config import settings as app_settings
 
 # Setup CORS for Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=app_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,6 +27,7 @@ app.include_router(status.router)
 app.include_router(projects.router)
 app.include_router(papers.router)
 app.include_router(gaps.router)
+app.include_router(settings.router)
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -40,7 +41,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Return 500 with CORS headers to avoid 'Network Error' masking in browser
     origin = request.headers.get("origin", "")
     headers = {}
-    if origin in settings.cors_origins or "*" in settings.cors_origins:
+    if origin in app_settings.cors_origins or "*" in app_settings.cors_origins:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
         

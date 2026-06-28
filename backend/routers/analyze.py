@@ -102,6 +102,31 @@ async def analyze_query(
         # 5. Research Analysis
         analysis = analyzer.analyze(request.query, merged_context)
         
+        # 6. Save Research Gaps to DB
+        from database import get_db
+        from models.metadata import ResearchGapModel
+        import uuid
+        
+        db = next(get_db())
+        for gap in analysis.inferred_gaps:
+            db_gap = ResearchGapModel(
+                id=str(uuid.uuid4()),
+                query=request.query,
+                title=gap.title,
+                category=gap.category,
+                description=gap.description,
+                confidence=gap.confidence,
+                novelty_score=gap.novelty_score,
+                evidence_citations=gap.evidence_citations,
+                supporting_papers=gap.supporting_papers,
+                future_research_direction=gap.future_research_direction,
+                suggested_methodology=gap.suggested_methodology,
+                potential_dataset=gap.potential_dataset,
+                related_papers=gap.related_papers
+            )
+            db.add(db_gap)
+        db.commit()
+        
         return analysis
         
     except Exception as e:

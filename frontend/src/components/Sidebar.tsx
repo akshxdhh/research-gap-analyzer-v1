@@ -10,11 +10,13 @@ import {
   Target, 
   FileDown, 
   Settings,
-  Brain
+  Brain,
+  Home as HomeIcon
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 const navItems = [
+  { name: "Home", href: "/", icon: HomeIcon },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Upload", href: "/upload", icon: UploadCloud },
   { name: "Library", href: "/library", icon: BookOpen },
