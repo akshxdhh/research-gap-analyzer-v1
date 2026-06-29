@@ -1,8 +1,8 @@
-"""init
+"""Initial Postgres schema
 
-Revision ID: 5f2759f34848
+Revision ID: 418b79e71fe4
 Revises: 
-Create Date: 2026-06-27 23:58:46.063334
+Create Date: 2026-06-29 12:08:20.332029
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5f2759f34848'
+revision: str = '418b79e71fe4'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -40,21 +40,52 @@ def upgrade() -> None:
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('status', sa.String(length=64), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
     op.create_table('research_gaps',
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('query', sa.Text(), nullable=False),
+    sa.Column('title', sa.String(length=512), nullable=True),
+    sa.Column('category', sa.String(length=255), nullable=True),
+    sa.Column('novelty_score', sa.Float(), nullable=True),
+    sa.Column('supporting_papers', sa.JSON(), nullable=True),
+    sa.Column('future_research_direction', sa.Text(), nullable=True),
+    sa.Column('suggested_methodology', sa.Text(), nullable=True),
+    sa.Column('potential_dataset', sa.Text(), nullable=True),
+    sa.Column('related_papers', sa.JSON(), nullable=True),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('confidence', sa.Float(), nullable=False),
     sa.Column('evidence_citations', sa.JSON(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_research_gaps_created_at', 'research_gaps', ['created_at'], unique=False)
+    op.create_table('settings',
+    sa.Column('id', sa.String(), nullable=False),
+    sa.Column('user_name', sa.String(), nullable=True),
+    sa.Column('user_email', sa.String(), nullable=True),
+    sa.Column('user_avatar', sa.String(), nullable=True),
+    sa.Column('user_organization', sa.String(), nullable=True),
+    sa.Column('user_research_interests', sa.JSON(), nullable=True),
+    sa.Column('app_theme', sa.String(), nullable=True),
+    sa.Column('app_default_report_format', sa.String(), nullable=True),
+    sa.Column('app_default_citation_style', sa.String(), nullable=True),
+    sa.Column('app_default_llm', sa.String(), nullable=True),
+    sa.Column('app_retrieval_depth', sa.Integer(), nullable=True),
+    sa.Column('app_search_provider_priority', sa.JSON(), nullable=True),
+    sa.Column('ai_preferred_model', sa.String(), nullable=True),
+    sa.Column('ai_temperature', sa.Float(), nullable=True),
+    sa.Column('ai_max_tokens', sa.Integer(), nullable=True),
+    sa.Column('ai_context_size', sa.Integer(), nullable=True),
+    sa.Column('notif_upload_completed', sa.Integer(), nullable=True),
+    sa.Column('notif_analysis_completed', sa.Integer(), nullable=True),
+    sa.Column('notif_report_generated', sa.Integer(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('papers',
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('project_id', sa.String(), nullable=False),
@@ -62,11 +93,17 @@ def upgrade() -> None:
     sa.Column('authors', sa.JSON(), nullable=True),
     sa.Column('year', sa.Integer(), nullable=True),
     sa.Column('filename', sa.String(length=512), nullable=False),
-    sa.Column('storage_path', sa.Text(), nullable=False),
+    sa.Column('content_hash', sa.String(length=64), nullable=True),
+    sa.Column('file_size', sa.Integer(), nullable=True),
+    sa.Column('cloud_url', sa.Text(), nullable=True),
     sa.Column('chunk_count', sa.Integer(), nullable=False),
-    sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('processing_status', sa.String(length=64), nullable=False),
+    sa.Column('processing_progress', sa.Float(), nullable=False),
+    sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('content_hash')
     )
     op.create_index(op.f('ix_papers_project_id'), 'papers', ['project_id'], unique=False)
     op.create_index('ix_papers_upload_date', 'papers', ['upload_date'], unique=False)
@@ -79,6 +116,7 @@ def downgrade() -> None:
     op.drop_index('ix_papers_upload_date', table_name='papers')
     op.drop_index(op.f('ix_papers_project_id'), table_name='papers')
     op.drop_table('papers')
+    op.drop_table('settings')
     op.drop_index('ix_research_gaps_created_at', table_name='research_gaps')
     op.drop_table('research_gaps')
     op.drop_table('projects')
