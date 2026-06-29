@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { 
-  ArrowRight, Brain, Search, FileText, Zap, ChevronRight, 
-  Database, Server, Cloud, Shield, Target, Code, Cpu, LineChart, 
+import {
+  ArrowRight, Brain, Search, FileText, Zap, ChevronRight,
+  Database, Server, Cloud, Shield, Target, Code, Cpu, LineChart,
   Users, ExternalLink, Activity, Menu, X
 } from "lucide-react";
 
@@ -22,7 +22,7 @@ const CountUp = ({ end, duration = 2, suffix = "" }: { end: number, duration?: n
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) setInView(true);
     }, { threshold: 0.5 });
-    
+
     if (nodeRef.current) observer.observe(nodeRef.current);
     return () => observer.disconnect();
   }, []);
@@ -52,53 +52,39 @@ export default function LandingPage() {
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
-  // Typing effect keywords
-  const keywords = [
-    "Research Gaps", "Novel Ideas", "Future Directions", "Hidden Patterns", 
-    "Scientific Insights", "Knowledge Graphs", "Evidence", "Research Opportunities", 
-    "Innovation Paths", "Cross-Domain Links", "Missing Connections", 
-    "Emerging Trends", "Literature Intelligence", "Breakthrough Ideas"
-  ];
-  const [currentKeyword, setCurrentKeyword] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentKeyword((prev) => (prev + 1) % keywords.length);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [keywords.length]);
 
   return (
     <div className="min-h-screen bg-background relative selection:bg-primary/30 overflow-x-hidden">
       {/* Background Animated Gradient & Orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <motion.div style={{ y }} className="absolute inset-0">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1], 
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
               opacity: [0.3, 0.5, 0.3],
               rotate: [0, 90, 0]
             }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[150px] mix-blend-screen" 
+            className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[150px] mix-blend-screen"
           />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.5, 1], 
+          <motion.div
+            animate={{
+              scale: [1, 1.5, 1],
               opacity: [0.3, 0.6, 0.3],
               rotate: [0, -90, 0]
             }}
             transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[150px] mix-blend-screen" 
+            className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[150px] mix-blend-screen"
           />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.1, 1], 
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
               opacity: [0.2, 0.4, 0.2],
               x: [0, 100, 0]
             }}
             transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[40%] left-[60%] w-[30%] h-[30%] rounded-full bg-purple-500/10 blur-[120px] mix-blend-screen" 
+            className="absolute top-[40%] left-[60%] w-[30%] h-[30%] rounded-full bg-purple-500/10 blur-[120px] mix-blend-screen"
           />
         </motion.div>
         {/* Subtle grid pattern & noise */}
@@ -115,22 +101,22 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-xl tracking-tight">Gap Analyzer</span>
           </Link>
-          
+
           {/* Desktop Nav */}
           <div className="hidden md:flex gap-4 items-center">
             <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-cursor="hover">Features</Link>
             <Link href="#architecture" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-cursor="hover">Architecture</Link>
-              <Link 
-                href="/dashboard"
-                className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all flex items-center gap-2 glow-primary shadow-lg shadow-primary/20"
-                data-cursor="hover"
-              >
-                Dashboard <ArrowRight className="w-4 h-4" />
-              </Link>
+            <Link
+              href="/dashboard"
+              className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all flex items-center gap-2 glow-primary shadow-lg shadow-primary/20"
+              data-cursor="hover"
+            >
+              Dashboard <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
           {/* Mobile Nav Toggle */}
-          <button 
+          <button
             className="md:hidden relative z-[60] p-2 text-foreground"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
@@ -142,7 +128,7 @@ export default function LandingPage() {
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -152,7 +138,7 @@ export default function LandingPage() {
             <Link href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold tracking-tight">Features</Link>
             <Link href="#workflow" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold tracking-tight">Workflow</Link>
             <Link href="#architecture" onClick={() => setIsMobileMenuOpen(false)} className="text-2xl font-bold tracking-tight">Architecture</Link>
-            <Link 
+            <Link
               href="/dashboard"
               className="mt-4 px-8 py-4 rounded-full bg-primary text-primary-foreground font-semibold text-lg flex items-center gap-2 w-[90vw] max-w-[340px] justify-center"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -163,55 +149,46 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
       <main className="flex flex-col items-center">
-        
+
         {/* --- 1. HERO SECTION --- */}
         <section className="relative w-full max-w-7xl mx-auto px-6 pt-32 md:pt-40 pb-24 md:pb-32 flex flex-col items-center justify-center text-center min-h-[90vh]">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="z-10 flex flex-col items-center w-full">
             <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-primary/30 bg-primary/10 mb-6 md:mb-8 text-xs md:text-sm font-medium text-primary backdrop-blur-md transition-colors cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.15)]" data-cursor="hover">
               <SparklesIcon className="w-4 h-4" /> Next-Gen Agentic RAG Architecture
             </div>
-            
-            <h1 className="text-[clamp(2.5rem,8vw,5.5rem)] font-bold tracking-tighter mb-6 md:mb-8 leading-[1.1] flex flex-col items-center w-full justify-center max-w-[95vw] md:max-w-none text-balance">
-              <span className="text-center mb-1 md:mb-4">Turn Thousands of Papers</span>
-              <span className="flex items-center justify-center flex-wrap gap-x-3 md:gap-x-6 w-full">
-                <span className="whitespace-nowrap">Into One Clear</span>
-                <span className="text-gradient relative flex justify-center text-center h-[1.2em] items-center min-w-max">
-                  {/* Invisible placeholder for max width/height to strictly prevent layout shift. */}
-                  <span className="invisible whitespace-nowrap pointer-events-none">Research Opportunities.</span>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={currentKeyword}
-                      initial={{ opacity: 0, filter: "blur(8px)", y: 20 }}
-                      animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                      exit={{ opacity: 0, filter: "blur(8px)", y: -20 }}
-                      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute left-1/2 -translate-x-1/2 md:left-0 md:-translate-x-0 top-1/2 -translate-y-1/2 whitespace-nowrap"
-                    >
-                      {keywords[currentKeyword]}.
-                    </motion.span>
-                  </AnimatePresence>
-                </span>
-              </span>
+
+            <h1 className="text-[clamp(2.5rem,6vw,5.5rem)] font-bold tracking-tighter mb-6 md:mb-8 leading-[1.15] max-w-[900px] text-balance mx-auto text-center flex flex-col items-center">
+              <motion.span initial={{ opacity: 0, filter: "blur(12px)", y: 30 }} animate={{ opacity: 1, filter: "blur(0px)", y: 0 }} transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}>
+                Transform Thousands of Papers
+              </motion.span>
+              <motion.span initial={{ opacity: 0, filter: "blur(12px)", y: 30 }} animate={{ opacity: 1, filter: "blur(0px)", y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }} className="text-gradient">
+                Into Research Intelligence
+              </motion.span>
             </h1>
-            
-            <p className="text-base md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed text-balance px-4">
-              Upload research papers and let autonomous AI agents analyze global literature, connect evidence across multiple sources, and uncover novel research opportunities in minutes.
-            </p>
-            
+
+            <motion.p 
+              initial={{ opacity: 0, filter: "blur(8px)", y: 20 }}
+              animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="text-base md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed text-balance px-4"
+            >
+              Upload research papers and let autonomous AI agents analyze global literature, connect evidence across multiple academic sources, and uncover novel research opportunities in minutes.
+            </motion.p>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4">
               <div className="w-full sm:w-auto @media(hover:hover):block">
-                  <Link href="/dashboard" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 glow-primary shadow-[0_0_40px_rgba(139,92,246,0.3)]">
-                    Start Research <ArrowRight className="w-5 h-5" />
-                  </Link>
+                <Link href="/dashboard" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 glow-primary shadow-[0_0_40px_rgba(139,92,246,0.3)]">
+                  Start Research <ArrowRight className="w-5 h-5" />
+                </Link>
               </div>
               <div className="w-full sm:w-auto @media(hover:hover):block">
-                  <a href="#workflow" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full glass font-semibold text-lg hover:bg-card-hover hover:scale-[1.02] transition-all flex items-center justify-center gap-2 border border-border/50">
-                    Explore Workflow
-                  </a>
+                <a href="#workflow" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full glass font-semibold text-lg hover:bg-card-hover hover:scale-[1.02] transition-all flex items-center justify-center gap-2 border border-border/50">
+                  Explore Workflow
+                </a>
               </div>
             </div>
           </motion.div>
-          
+
           <motion.div style={{ opacity: useTransform(scrollYProgress, [0, 0.05], [1, 0]) }} className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
             <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center pt-2">
               <div className="w-1 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
@@ -245,7 +222,7 @@ export default function LandingPage() {
 
         {/* --- 3. FEATURES GRID --- */}
         <section id="features" className="w-full max-w-7xl mx-auto px-6 py-32 relative">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -265,7 +242,7 @@ export default function LandingPage() {
               { icon: Shield, color: "text-red-500", bg: "bg-red-500/20", title: "Contradiction Detection", desc: "Automatically flags studies that contradict each other on empirical results, sample sizes, or baseline comparisons." },
               { icon: Database, color: "text-blue-500", bg: "bg-blue-500/20", title: "Vector Search", desc: "Uses Qdrant for blazing fast semantic similarity search across chunked PDFs, ensuring high recall for local literature." }
             ].map((f, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -291,7 +268,7 @@ export default function LandingPage() {
         {/* --- 4. WORKFLOW SECTION --- */}
         <section id="workflow" className="w-full py-32 bg-card/20 border-y border-border/50 relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 text-center">
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
@@ -300,19 +277,19 @@ export default function LandingPage() {
             >
               The Agentic RAG Pipeline
             </motion.h2>
-            
+
             <div className="relative max-w-4xl mx-auto">
               {/* Scrolling drawn line */}
-              <motion.div 
-                className="absolute top-0 bottom-0 left-6 md:left-1/2 md:-translate-x-1/2 w-0.5 bg-gradient-to-b from-primary via-accent to-primary" 
-                style={{ 
+              <motion.div
+                className="absolute top-0 bottom-0 left-6 md:left-1/2 md:-translate-x-1/2 w-0.5 bg-gradient-to-b from-primary via-accent to-primary"
+                style={{
                   scaleY: useTransform(scrollYProgress, [0.3, 0.7], [0, 1]),
                   transformOrigin: "top center"
                 }}
               />
               {/* Faded background line track */}
               <div className="absolute top-0 bottom-0 left-6 md:left-1/2 md:-translate-x-1/2 w-0.5 bg-border/30" />
-              
+
               {[
                 { title: "Query Understanding", desc: "LLM analyzes intent and extracts key entities.", icon: Brain, color: "text-primary", align: "right" },
                 { title: "Planner Agent", desc: "Generates an execution graph of necessary searches.", icon: Activity, color: "text-accent", align: "left" },
@@ -321,7 +298,7 @@ export default function LandingPage() {
                 { title: "Research Analyzer", desc: "Groq Llama-3 infers gaps and detects contradictions.", icon: Target, color: "text-red-500", align: "right" },
                 { title: "Final Output", gap: false, desc: "JSON Dashboard Updates + PDF Report Generation.", icon: FileText, color: "text-blue-500", align: "left" }
               ].map((step, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -339,7 +316,7 @@ export default function LandingPage() {
                     )}
                   </div>
 
-                  <motion.div 
+                  <motion.div
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     className="w-12 h-12 md:w-16 md:h-16 shrink-0 rounded-full bg-background border-2 border-primary/30 shadow-[0_0_20px_rgba(139,92,246,0.1)] flex items-center justify-center z-10 relative group hover:border-primary transition-colors cursor-pointer"
                     data-cursor="hover"
@@ -360,7 +337,7 @@ export default function LandingPage() {
 
         {/* --- 5. TECH STACK --- */}
         <section id="architecture" className="w-full max-w-7xl mx-auto px-6 py-32">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -370,7 +347,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-5xl font-bold mb-6">Enterprise-Grade Stack</h2>
             <p className="text-muted-foreground text-lg">Built on scalable, modern infrastructure.</p>
           </motion.div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { name: "Next.js 15", category: "Frontend", icon: Code },
@@ -382,7 +359,7 @@ export default function LandingPage() {
               { name: "Zustand", category: "State", icon: LayersIcon },
               { name: "Upstash Redis", category: "Cache", icon: Zap }
             ].map((tech, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -401,7 +378,7 @@ export default function LandingPage() {
         {/* --- 6. HIGHLIGHTS --- */}
         <section className="w-full py-32 bg-primary/5 border-y border-border/50">
           <div className="max-w-7xl mx-auto px-6">
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
@@ -411,7 +388,7 @@ export default function LandingPage() {
               Platform Capabilities
             </motion.h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
@@ -428,7 +405,7 @@ export default function LandingPage() {
                   <li className="flex items-center gap-3"><CheckIcon className="w-5 h-5 text-emerald-500" /> Cross-encoder re-ranking</li>
                 </ul>
               </motion.div>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
@@ -468,7 +445,7 @@ export default function LandingPage() {
                 </a>
               </div>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Navigation</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -478,7 +455,7 @@ export default function LandingPage() {
                 <li><Link href="/reports" className="hover:text-primary transition-colors">Reports</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Technology</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -489,7 +466,7 @@ export default function LandingPage() {
                 <li>Llama 3 (Groq)</li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="font-semibold mb-4">Legal & Meta</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
@@ -500,7 +477,7 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© 2026 Research Gap Analyzer. All Rights Reserved.</p>
             <p>Built using Agentic RAG, Next.js, and GROQ.</p>
@@ -521,9 +498,9 @@ function SparklesIcon(props: any) {
 }
 
 function LayersIcon(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></svg>
+  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 12 12 17 22 12" /><polyline points="2 17 12 22 22 17" /></svg>
 }
 
 function CheckIcon(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
 }
