@@ -161,15 +161,15 @@ export const api = {
   },
 
   // Papers
-  getPapers: async (): Promise<Paper[]> => {
+  getPapers: async (): Promise<{items: Paper[], total: number, limit: number, offset: number}> => {
     const response = await apiClient.get("/papers");
-    return response.data || [];
+    return response.data || { items: [], total: 0, limit: 50, offset: 0 };
   },
 
   // Gaps
-  getGaps: async (): Promise<ResearchGap[]> => {
+  getGaps: async (): Promise<{items: ResearchGap[], total: number, limit: number, offset: number}> => {
     const response = await apiClient.get("/gaps");
-    return response.data || [];
+    return response.data || { items: [], total: 0, limit: 50, offset: 0 };
   },
 
   // Settings

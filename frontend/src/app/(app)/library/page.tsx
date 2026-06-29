@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAnalysisStore } from "@/store/useAnalysisStore";
 import { Search, FileText, Trash2, ExternalLink } from "lucide-react";
-import { motion } from "framer-motion";
+const { FixedSizeList: List } = require("react-window");
+const AutoSizer = require("react-virtualized-auto-sizer").default || require("react-virtualized-auto-sizer");
 
 export default function LibraryPage() {
   const { papers, isLoading, refreshPapers } = useAnalysisStore();
@@ -14,13 +15,50 @@ export default function LibraryPage() {
   }, [refreshPapers]);
 
   const filteredPapers = papers.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (p.authors && p.authors.join(", ").toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const Row = ({ index, style }: { index: number, style: any }) => {
+    const paper = filteredPapers[index];
+    return (
+      <div style={style} className="flex items-center px-6 border-b border-border/50 hover:bg-card-hover transition-colors group">
+        <div className="flex-1 min-w-0 pr-4">
+          <p className="font-medium truncate" title={paper.title}>{paper.title}</p>
+        </div>
+        <div className="w-48 flex-shrink-0 text-muted-foreground truncate pr-4" title={paper.authors?.join(", ")}>
+          {paper.authors?.join(", ") || "Unknown"}
+        </div>
+        <div className="w-24 flex-shrink-0 text-muted-foreground">
+          {paper.year || "-"}
+        </div>
+        <div className="w-24 flex-shrink-0 text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {paper.cloud_url && (
+            <a 
+              href={paper.cloud_url} 
+              target="_blank" 
+              rel="noreferrer"
+              className="p-2 hover:bg-muted rounded-md text-blue-400 transition-colors"
+              title="View PDF"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+          <button 
+            className="p-2 hover:bg-red-500/10 rounded-md text-red-400 transition-colors"
+            title="Delete Paper"
+            onClick={() => console.log("Delete not implemented in MVP")}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
         <h1 className="text-3xl font-bold">Paper Library</h1>
         
         <div className="relative w-full sm:w-64">
@@ -35,79 +73,47 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      <div className="glass-panel rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="px-6 py-4 font-medium">Title</th>
-                <th className="px-6 py-4 font-medium">Authors</th>
-                <th className="px-6 py-4 font-medium">Year</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    <td className="px-6 py-4"><div className="h-4 w-3/4 bg-muted shimmer rounded" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-1/2 bg-muted shimmer rounded" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-8 bg-muted shimmer rounded" /></td>
-                    <td className="px-6 py-4"><div className="h-4 w-16 bg-muted shimmer rounded ml-auto" /></td>
-                  </tr>
-                ))
-              ) : filteredPapers.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p>No papers found in your library.</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredPapers.map((paper, i) => (
-                  <motion.tr 
-                    key={paper.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="hover:bg-card-hover transition-colors group"
-                  >
-                    <td className="px-6 py-4 font-medium max-w-md truncate" title={paper.title}>
-                      {paper.title}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground truncate max-w-[200px]" title={paper.authors?.join(", ")}>
-                      {paper.authors?.join(", ") || "Unknown"}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {paper.year || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {paper.cloud_url && (
-                          <a 
-                            href={paper.cloud_url} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="p-2 hover:bg-muted rounded-md text-blue-400 transition-colors"
-                            title="View PDF"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
-                        <button 
-                          className="p-2 hover:bg-red-500/10 rounded-md text-red-400 transition-colors"
-                          title="Delete Paper"
-                          onClick={() => console.log("Delete not implemented in MVP")}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
+      <div className="glass-panel rounded-xl overflow-hidden flex-1 flex flex-col min-h-0">
+        {/* Header */}
+        <div className="flex items-center px-6 py-4 bg-muted/50 text-muted-foreground font-medium text-sm flex-shrink-0 border-b border-border/50">
+          <div className="flex-1">Title</div>
+          <div className="w-48 flex-shrink-0">Authors</div>
+          <div className="w-24 flex-shrink-0">Year</div>
+          <div className="w-24 flex-shrink-0 text-right">Actions</div>
+        </div>
+
+        {/* Virtualized List */}
+        <div className="flex-1 relative">
+          {isLoading && filteredPapers.length === 0 ? (
+            <div className="p-4 space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center px-2 py-3">
+                  <div className="flex-1"><div className="h-4 w-3/4 bg-muted shimmer rounded" /></div>
+                  <div className="w-48"><div className="h-4 w-1/2 bg-muted shimmer rounded" /></div>
+                  <div className="w-24"><div className="h-4 w-8 bg-muted shimmer rounded" /></div>
+                  <div className="w-24"><div className="h-4 w-16 bg-muted shimmer rounded ml-auto" /></div>
+                </div>
+              ))}
+            </div>
+          ) : filteredPapers.length === 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+              <FileText className="w-12 h-12 mb-3 opacity-20" />
+              <p>No papers found in your library.</p>
+            </div>
+          ) : (
+            <AutoSizer>
+              {({ height, width }: { height: number, width: number }) => (
+                <List
+                  height={height}
+                  itemCount={filteredPapers.length}
+                  itemSize={60} // Row height
+                  width={width}
+                >
+                  {Row}
+                </List>
               )}
-            </tbody>
-          </table>
+            </AutoSizer>
+          )}
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ class AnalyzeRequest(BaseModel):
 class UploadResponse(BaseModel):
     message: str
     file_id: str
-    chunk_count: int
+    chunk_count: Optional[int] = 0
 
 class StatusResponse(BaseModel):
     status: str = "ok"

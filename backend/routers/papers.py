@@ -6,6 +6,16 @@ from models.metadata import PaperModel
 router = APIRouter(prefix="/api/v1/papers", tags=["Papers"])
 
 @router.get("")
-async def get_papers(db: Session = Depends(get_db)):
-    papers = db.query(PaperModel).order_by(PaperModel.upload_date.desc()).all()
-    return papers
+async def get_papers(
+    limit: int = 50, 
+    offset: int = 0, 
+    db: Session = Depends(get_db)
+):
+    total = db.query(PaperModel).count()
+    papers = db.query(PaperModel).order_by(PaperModel.upload_date.desc()).offset(offset).limit(limit).all()
+    return {
+        "items": papers,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }

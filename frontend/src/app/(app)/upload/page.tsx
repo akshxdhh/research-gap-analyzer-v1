@@ -1,199 +1,199 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { UploadCloud, File, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useDropzone } from "react-dropzone";
+import JSZip from "jszip";
+import { UploadCloud, File as FileIcon, CheckCircle, AlertCircle, Loader2, PlayCircle, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { useAnalysisStore } from "@/store/useAnalysisStore";
 
 export default function UploadPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const refreshPapers = useAnalysisStore(state => state.refreshPapers);
+  const [localQueue, setLocalQueue] = useState<{file: File, id: string, progress: number, status: string}[]>([]);
+  const { papers, refreshPapers, startSSE, stopSSE } = useAnalysisStore();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      if (selected.type !== "application/pdf") {
-        setStatus("error");
-        setErrorMessage("Only PDF files are supported");
-        return;
+  useEffect(() => {
+    refreshPapers();
+    startSSE();
+    return () => {
+      // Don't necessarily stop SSE on unmount if we want dashboard stats to update globally,
+      // but for this component it's good to ensure it's running.
+    };
+  }, []);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    let pdfsToUpload: File[] = [];
+
+    for (const file of acceptedFiles) {
+      if (file.type === "application/pdf") {
+        pdfsToUpload.push(file);
+      } else if (file.type === "application/zip" || file.name.endsWith(".zip")) {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const entries = Object.values(zip.files);
+          for (const entry of entries) {
+            if (!entry.dir && entry.name.toLowerCase().endsWith(".pdf")) {
+              const blob = await entry.async("blob");
+              const extractedFile = new File([blob], entry.name, { type: "application/pdf" });
+              pdfsToUpload.push(extractedFile);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to extract ZIP", error);
+        }
       }
-      setFile(selected);
-      setStatus("idle");
     }
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const selected = e.dataTransfer.files[0];
-      if (selected.type !== "application/pdf") {
-        setStatus("error");
-        setErrorMessage("Only PDF files are supported");
-        return;
+    if (pdfsToUpload.length === 0) return;
+
+    // Add to local queue
+    const newItems = pdfsToUpload.map(f => ({
+      file: f,
+      id: Math.random().toString(36).substring(7),
+      progress: 0,
+      status: 'pending'
+    }));
+    
+    setLocalQueue(prev => [...prev, ...newItems]);
+
+    // Process uploads concurrently (limit 4)
+    const concurrencyLimit = 4;
+    let active = 0;
+    let index = 0;
+
+    const processQueue = async () => {
+      if (index >= newItems.length) return;
+      if (active >= concurrencyLimit) return;
+
+      const item = newItems[index++];
+      active++;
+
+      setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' } : i));
+
+      try {
+        await api.uploadFile(item.file, (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 100));
+          setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, progress: percentCompleted } : i));
+        });
+        
+        setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success' } : i));
+        refreshPapers(); // Refresh to get the new DB entry, SSE will track its progress
+      } catch (err) {
+        setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error' } : i));
+      } finally {
+        active--;
+        processQueue();
       }
-      setFile(selected);
-      setStatus("idle");
+    };
+
+    // Start workers
+    for (let i = 0; i < concurrencyLimit; i++) {
+      processQueue();
     }
-  };
+  }, [refreshPapers]);
 
-  const handleUpload = async () => {
-    if (!file) return;
-    
-    setIsUploading(true);
-    setStatus("idle");
-    setProgress(0);
-    
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      // Simulate progress since axios onUploadProgress might not work perfectly with local fast APIs
-      const interval = setInterval(() => {
-        setProgress(p => Math.min(p + 10, 90));
-      }, 500);
-
-      await api.uploadFile(file);
-      
-      clearInterval(interval);
-      setProgress(100);
-      setStatus("success");
-      refreshPapers();
-      
-      setTimeout(() => {
-        setFile(null);
-        setStatus("idle");
-        setProgress(0);
-      }, 3000);
-      
-    } catch (err: any) {
-      setStatus("error");
-      setErrorMessage(err.response?.data?.detail || err.message || "Upload failed");
-    } finally {
-      setIsUploading(false);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/zip': ['.zip']
     }
-  };
+  });
+
+  // Filter backend papers that are currently processing
+  const processingPapers = papers.filter(p => p.processing_status && p.processing_status !== 'ready' && p.processing_status !== 'error');
+  const errorPapers = papers.filter(p => p.processing_status === 'error');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Upload Papers</h1>
-        <p className="text-muted-foreground">Upload research papers in PDF format for analysis.</p>
+        <h1 className="text-3xl font-bold mb-2">Mass Upload</h1>
+        <p className="text-muted-foreground">Drag and drop multiple PDFs, folders, or ZIP archives.</p>
       </div>
 
       <div 
-        className={`glass-panel border-2 border-dashed rounded-2xl p-12 text-center transition-all ${
-          status === "error" ? "border-red-500/50 bg-red-500/5" : 
-          status === "success" ? "border-emerald-500/50 bg-emerald-500/5" : 
-          "border-border hover:border-primary/50"
+        {...getRootProps()}
+        className={`glass-panel border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
+          isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
         }`}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDrop}
       >
-        <input 
-          type="file" 
-          accept="application/pdf"
-          className="hidden" 
-          ref={fileInputRef}
-          onChange={handleFileChange}
-        />
-        
-        <AnimatePresence mode="wait">
-          {!file ? (
-            <motion.div 
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center space-y-4 cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <UploadCloud className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-medium">Click or drag PDF to upload</p>
-                <p className="text-sm text-muted-foreground mt-1">Maximum file size: 25MB</p>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="file"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center space-y-6"
-            >
-              {status === "success" ? (
-                <motion.div 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center"
-                >
-                  <CheckCircle className="w-8 h-8 text-emerald-500" />
-                </motion.div>
-              ) : status === "error" ? (
-                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8 text-red-500" />
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
-                  <File className="w-8 h-8 text-blue-500" />
-                </div>
-              )}
-              
-              <div className="text-center">
-                <p className="text-lg font-medium truncate max-w-xs mx-auto">{file.name}</p>
-                <p className="text-sm text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-              </div>
-              
-              {status === "error" && (
-                <p className="text-sm text-red-400 bg-red-400/10 px-4 py-2 rounded-md">{errorMessage}</p>
-              )}
-              
-              {status === "success" && (
-                <p className="text-sm text-emerald-400">File uploaded and processed successfully!</p>
-              )}
-              
-              {isUploading && (
-                <div className="w-full max-w-md mx-auto space-y-2">
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+            <UploadCloud className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <p className="text-lg font-medium">Click or drag files here</p>
+            <p className="text-sm text-muted-foreground mt-1">Supports PDF and ZIP (Max 100MB per file)</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Local Upload Queue */}
+      {localQueue.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Upload Queue</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {localQueue.map((item) => (
+              <div key={item.id} className="glass-panel rounded-xl p-4 flex items-center gap-4">
+                {item.status === 'success' ? <CheckCircle className="text-emerald-500 flex-shrink-0" /> :
+                 item.status === 'error' ? <AlertCircle className="text-red-500 flex-shrink-0" /> :
+                 item.status === 'uploading' ? <Loader2 className="animate-spin text-primary flex-shrink-0" /> :
+                 <PlayCircle className="text-muted-foreground flex-shrink-0" />}
+                
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.file.name}</p>
+                  <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
                     <div 
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${progress}%` }}
+                      className={`h-full transition-all duration-300 ${item.status === 'error' ? 'bg-red-500' : 'bg-primary'}`}
+                      style={{ width: `${item.progress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground animate-pulse">
-                    Processing semantic chunks and vectorizing...
-                  </p>
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              {status !== "success" && !isUploading && (
-                <div className="flex gap-4 mt-4">
-                  <button 
-                    onClick={() => { setFile(null); setStatus("idle"); }}
-                    className="px-4 py-2 rounded-md border border-border hover:bg-muted transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleUpload}
-                    className="px-6 py-2 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Upload & Analyze
-                  </button>
+      {/* Background Processing Queue (SSE) */}
+      {(processingPapers.length > 0 || errorPapers.length > 0) && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Background Processing</h2>
+          <div className="space-y-3">
+            {[...processingPapers, ...errorPapers].map(paper => (
+              <div key={paper.id} className="glass-panel rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium truncate flex-1 pr-4">{paper.title}</p>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {paper.processing_status}
+                  </span>
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden relative">
+                    <div 
+                      className={`h-full absolute left-0 top-0 transition-all duration-500 ease-out ${
+                        paper.processing_status === 'error' ? 'bg-red-500' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${paper.processing_progress || 0}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium w-12 text-right">
+                    {Math.round(paper.processing_progress || 0)}%
+                  </span>
+                </div>
+
+                {paper.processing_status === 'error' && (
+                  <div className="mt-3 text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded flex items-center justify-between">
+                    <span>{paper.error_message || "Unknown error"}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

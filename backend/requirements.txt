@@ -22,3 +22,4 @@ Jinja2
 tiktoken
 PyMuPDF
 supabase
+celery[redis]

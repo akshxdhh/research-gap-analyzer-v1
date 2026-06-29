@@ -80,6 +80,9 @@ class PaperModel(Base):
     filename = Column(String(512), nullable=False)
     cloud_url = Column(Text, nullable=True)  # Store Supabase URL here
     chunk_count = Column(Integer, nullable=False, default=0)
+    processing_status = Column(String(64), nullable=False, default="queued") # queued, extracting, embedding, ready, error
+    processing_progress = Column(Float, nullable=False, default=0.0)
+    error_message = Column(Text, nullable=True)
     upload_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     project = relationship("ProjectModel", back_populates="papers")
