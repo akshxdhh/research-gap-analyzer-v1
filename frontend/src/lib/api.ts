@@ -135,6 +135,16 @@ export const api = {
     return response.data;
   },
 
+  retryUpload: async (fileId: string): Promise<any> => {
+    const response = await apiClient.post(`/upload/retry/${fileId}`);
+    return response.data;
+  },
+
+  cancelUpload: async (fileId: string): Promise<any> => {
+    const response = await apiClient.post(`/upload/cancel/${fileId}`);
+    return response.data;
+  },
+
   // Reports
   generateReport: async (request: GenerateReportRequest): Promise<Blob> => {
     const response = await apiClient.post("/reports", request, {

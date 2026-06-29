@@ -3,23 +3,145 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import JSZip from "jszip";
-import { UploadCloud, File as FileIcon, CheckCircle, AlertCircle, Loader2, PlayCircle, XCircle } from "lucide-react";
+import { 
+  UploadCloud, 
+  File as FileIcon, 
+  CheckCircle, 
+  AlertCircle, 
+  Loader2, 
+  PlayCircle, 
+  XCircle, 
+  RotateCcw, 
+  X,
+  FileText
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { useAnalysisStore } from "@/store/useAnalysisStore";
 
+type QueueItem = {
+  id: string;
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'processing' | 'success' | 'error' | 'cancelled';
+  errorDetail?: string;
+  backendId?: string;
+};
+
 export default function UploadPage() {
-  const [localQueue, setLocalQueue] = useState<{file: File, id: string, progress: number, status: string}[]>([]);
-  const { papers, refreshPapers, startSSE, stopSSE } = useAnalysisStore();
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const { papers, refreshPapers, startSSE } = useAnalysisStore();
 
   useEffect(() => {
     refreshPapers();
     startSSE();
-    return () => {
-      // Don't necessarily stop SSE on unmount if we want dashboard stats to update globally,
-      // but for this component it's good to ensure it's running.
+  }, [refreshPapers, startSSE]);
+
+  // Sync backend papers with our queue items
+  useEffect(() => {
+    setQueue(prevQueue => {
+      let changed = false;
+      const newQueue = prevQueue.map(item => {
+        if (!item.backendId) return item;
+        const paper = papers.find(p => p.id === item.backendId);
+        if (paper) {
+          let newStatus = item.status;
+          let newProgress = item.progress;
+          let newError = item.errorDetail;
+
+          if (paper.processing_status === 'error') {
+            newStatus = 'error';
+            newError = paper.error_message || "Processing failed";
+          } else if (paper.processing_status === 'cancelled') {
+            newStatus = 'cancelled';
+            newError = paper.error_message || "Cancelled";
+          } else if (paper.processing_status === 'ready') {
+            newStatus = 'success';
+            newProgress = 100;
+          } else {
+            // It's processing
+            if (item.status !== 'error' && item.status !== 'cancelled') {
+              newStatus = 'processing';
+              newProgress = paper.processing_progress;
+            }
+          }
+
+          if (item.status !== newStatus || item.progress !== newProgress || item.errorDetail !== newError) {
+            changed = true;
+            return { ...item, status: newStatus, progress: newProgress, errorDetail: newError };
+          }
+        }
+        return item;
+      });
+      return changed ? newQueue : prevQueue;
+    });
+  }, [papers]);
+
+  const processQueue = useCallback(async (itemsToProcess: QueueItem[]) => {
+    const concurrencyLimit = 3;
+    let active = 0;
+    let index = 0;
+
+    const worker = async () => {
+      while (index < itemsToProcess.length) {
+        if (active >= concurrencyLimit) {
+          await new Promise(r => setTimeout(r, 100));
+          continue;
+        }
+
+        const item = itemsToProcess[index++];
+        
+        // Find latest state of item from React state to check if it was cancelled
+        let isCancelled = false;
+        setQueue(prev => {
+          const currentItem = prev.find(i => i.id === item.id);
+          if (currentItem?.status === 'cancelled') isCancelled = true;
+          return prev;
+        });
+
+        if (isCancelled) continue;
+
+        active++;
+
+        setQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading', progress: 0 } : i));
+
+        try {
+          const res = await api.uploadFile(item.file, (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 100));
+            setQueue(prev => prev.map(i => {
+              if (i.id === item.id && i.status !== 'cancelled' && i.status !== 'error') {
+                return { ...i, progress: percentCompleted };
+              }
+              return i;
+            }));
+          });
+          
+          setQueue(prev => prev.map(i => {
+            if (i.id === item.id && i.status !== 'cancelled') {
+              return { ...i, status: 'processing', backendId: res.file_id };
+            }
+            return i;
+          }));
+          
+          refreshPapers(); // Ensure new paper is in store
+        } catch (err: any) {
+          const msg = err.response?.data?.detail || err.message || "Upload failed";
+          setQueue(prev => prev.map(i => {
+            if (i.id === item.id && i.status !== 'cancelled') {
+              return { ...i, status: 'error', errorDetail: msg };
+            }
+            return i;
+          }));
+        } finally {
+          active--;
+        }
+      }
     };
-  }, []);
+
+    for (let i = 0; i < concurrencyLimit; i++) {
+      worker();
+    }
+  }, [refreshPapers]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     let pdfsToUpload: File[] = [];
@@ -46,51 +168,16 @@ export default function UploadPage() {
 
     if (pdfsToUpload.length === 0) return;
 
-    // Add to local queue
-    const newItems = pdfsToUpload.map(f => ({
-      file: f,
+    const newItems: QueueItem[] = pdfsToUpload.map(f => ({
       id: Math.random().toString(36).substring(7),
+      file: f,
       progress: 0,
       status: 'pending'
     }));
     
-    setLocalQueue(prev => [...prev, ...newItems]);
-
-    // Process uploads concurrently (limit 4)
-    const concurrencyLimit = 4;
-    let active = 0;
-    let index = 0;
-
-    const processQueue = async () => {
-      if (index >= newItems.length) return;
-      if (active >= concurrencyLimit) return;
-
-      const item = newItems[index++];
-      active++;
-
-      setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' } : i));
-
-      try {
-        await api.uploadFile(item.file, (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 100));
-          setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, progress: percentCompleted } : i));
-        });
-        
-        setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success' } : i));
-        refreshPapers(); // Refresh to get the new DB entry, SSE will track its progress
-      } catch (err) {
-        setLocalQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error' } : i));
-      } finally {
-        active--;
-        processQueue();
-      }
-    };
-
-    // Start workers
-    for (let i = 0; i < concurrencyLimit; i++) {
-      processQueue();
-    }
-  }, [refreshPapers]);
+    setQueue(prev => [...newItems, ...prev]);
+    processQueue(newItems);
+  }, [processQueue]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -100,97 +187,165 @@ export default function UploadPage() {
     }
   });
 
-  // Filter backend papers that are currently processing
-  const processingPapers = papers.filter(p => p.processing_status && p.processing_status !== 'ready' && p.processing_status !== 'error');
-  const errorPapers = papers.filter(p => p.processing_status === 'error');
+  const handleCancel = async (id: string, backendId?: string) => {
+    setQueue(prev => prev.map(i => i.id === id ? { ...i, status: 'cancelled' } : i));
+    if (backendId) {
+      try {
+        await api.cancelUpload(backendId);
+        refreshPapers();
+      } catch (err) {
+        console.error("Failed to cancel on backend", err);
+      }
+    }
+  };
+
+  const handleRetry = async (id: string, backendId?: string) => {
+    const item = queue.find(i => i.id === id);
+    if (!item) return;
+
+    if (backendId) {
+      try {
+        setQueue(prev => prev.map(i => i.id === id ? { ...i, status: 'processing', errorDetail: undefined } : i));
+        await api.retryUpload(backendId);
+        refreshPapers();
+      } catch (err) {
+        console.error("Failed to retry on backend", err);
+        setQueue(prev => prev.map(i => i.id === id ? { ...i, status: 'error', errorDetail: "Failed to retry" } : i));
+      }
+    } else {
+      // It failed during upload, just put it back in queue
+      setQueue(prev => prev.map(i => i.id === id ? { ...i, status: 'pending', progress: 0, errorDetail: undefined } : i));
+      processQueue([{ ...item, status: 'pending', progress: 0 }]);
+    }
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 pb-20">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Mass Upload</h1>
-        <p className="text-muted-foreground">Drag and drop multiple PDFs, folders, or ZIP archives.</p>
+        <h1 className="text-3xl font-bold mb-2">Mass Upload & Ingestion</h1>
+        <p className="text-muted-foreground">Drag and drop hundreds of PDFs or ZIP archives. The system handles duplicate detection and automated extraction.</p>
       </div>
 
       <div 
         {...getRootProps()}
-        className={`glass-panel border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${
-          isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+        className={`glass-panel border-2 border-dashed rounded-2xl p-16 text-center transition-all cursor-pointer shadow-sm ${
+          isDragActive ? "border-primary bg-primary/10 shadow-primary/20 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-card-hover"
         }`}
       >
         <input {...getInputProps()} />
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-            <UploadCloud className="w-8 h-8 text-primary" />
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${isDragActive ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"}`}>
+            <UploadCloud className="w-10 h-10" />
           </div>
           <div>
-            <p className="text-lg font-medium">Click or drag files here</p>
-            <p className="text-sm text-muted-foreground mt-1">Supports PDF and ZIP (Max 100MB per file)</p>
+            <p className="text-2xl font-bold">Drag & Drop Papers Here</p>
+            <p className="text-muted-foreground mt-2 text-lg">Supports bulk PDF selection, folder drag, and ZIP archives</p>
           </div>
         </div>
       </div>
 
-      {/* Local Upload Queue */}
-      {localQueue.length > 0 && (
+      {queue.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Upload Queue</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {localQueue.map((item) => (
-              <div key={item.id} className="glass-panel rounded-xl p-4 flex items-center gap-4">
-                {item.status === 'success' ? <CheckCircle className="text-emerald-500 flex-shrink-0" /> :
-                 item.status === 'error' ? <AlertCircle className="text-red-500 flex-shrink-0" /> :
-                 item.status === 'uploading' ? <Loader2 className="animate-spin text-primary flex-shrink-0" /> :
-                 <PlayCircle className="text-muted-foreground flex-shrink-0" />}
-                
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{item.file.name}</p>
-                  <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-300 ${item.status === 'error' ? 'bg-red-500' : 'bg-primary'}`}
-                      style={{ width: `${item.progress}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Upload Queue ({queue.length})
+            </h2>
+            <div className="text-sm text-muted-foreground">
+              {queue.filter(q => q.status === 'success').length} Complete · {queue.filter(q => q.status === 'error').length} Failed
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Background Processing Queue (SSE) */}
-      {(processingPapers.length > 0 || errorPapers.length > 0) && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Background Processing</h2>
-          <div className="space-y-3">
-            {[...processingPapers, ...errorPapers].map(paper => (
-              <div key={paper.id} className="glass-panel rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium truncate flex-1 pr-4">{paper.title}</p>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {paper.processing_status}
-                  </span>
-                </div>
+          
+          <div className="grid grid-cols-1 gap-3">
+            <AnimatePresence>
+              {queue.map((item) => {
+                const paper = item.backendId ? papers.find(p => p.id === item.backendId) : null;
+                const statusText = paper?.processing_status || item.status;
+                const progressVal = item.status === 'processing' ? (paper?.processing_progress || 0) : item.progress;
                 
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden relative">
-                    <div 
-                      className={`h-full absolute left-0 top-0 transition-all duration-500 ease-out ${
-                        paper.processing_status === 'error' ? 'bg-red-500' : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${paper.processing_progress || 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-12 text-right">
-                    {Math.round(paper.processing_progress || 0)}%
-                  </span>
-                </div>
+                return (
+                  <motion.div 
+                    key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="glass-card rounded-xl p-4 flex items-center gap-4 relative overflow-hidden"
+                  >
+                    {/* Background Progress Bar for processing */}
+                    {item.status === 'processing' && (
+                      <div 
+                        className="absolute inset-y-0 left-0 bg-primary/5 -z-10 transition-all duration-500 ease-out"
+                        style={{ width: `${progressVal}%` }}
+                      />
+                    )}
 
-                {paper.processing_status === 'error' && (
-                  <div className="mt-3 text-sm text-red-400 bg-red-400/10 px-3 py-2 rounded flex items-center justify-between">
-                    <span>{paper.error_message || "Unknown error"}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+                    {/* Status Icon */}
+                    <div className="flex-shrink-0">
+                      {item.status === 'success' ? <CheckCircle className="w-6 h-6 text-emerald-500" /> :
+                       item.status === 'error' ? <AlertCircle className="w-6 h-6 text-red-500" /> :
+                       item.status === 'cancelled' ? <XCircle className="w-6 h-6 text-muted-foreground" /> :
+                       item.status === 'uploading' ? <UploadCloud className="w-6 h-6 text-primary animate-pulse" /> :
+                       item.status === 'processing' ? <Loader2 className="w-6 h-6 text-accent animate-spin" /> :
+                       <PlayCircle className="w-6 h-6 text-muted-foreground opacity-50" />}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-semibold truncate pr-4 text-foreground">{item.file.name}</p>
+                        <span className={`text-xs font-bold uppercase tracking-wider ${
+                          item.status === 'success' ? 'text-emerald-500' :
+                          item.status === 'error' ? 'text-red-500' :
+                          item.status === 'cancelled' ? 'text-muted-foreground' :
+                          'text-primary'
+                        }`}>
+                          {item.status === 'processing' && paper?.processing_status ? paper.processing_status : item.status}
+                        </span>
+                      </div>
+                      
+                      {/* Upload Progress Bar */}
+                      {item.status === 'uploading' && (
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1">
+                          <div 
+                            className="h-full bg-primary transition-all duration-200"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Error Message */}
+                      {item.status === 'error' && (
+                         <p className="text-xs text-red-400 mt-1 bg-red-500/10 inline-block px-2 py-1 rounded">
+                           {item.errorDetail || "Unknown error"}
+                         </p>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {(item.status === 'pending' || item.status === 'uploading' || item.status === 'processing') && (
+                        <button 
+                          onClick={() => handleCancel(item.id, item.backendId)}
+                          className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      {(item.status === 'error' || item.status === 'cancelled') && (
+                        <button 
+                          onClick={() => handleRetry(item.id, item.backendId)}
+                          className="p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium"
+                          title="Retry"
+                        >
+                          <RotateCcw className="w-4 h-4" /> Retry
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </div>
       )}

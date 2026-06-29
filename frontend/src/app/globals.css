@@ -96,9 +96,3 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
-
- /* Custom Cursor Hiding */
-html.has-custom-cursor,
-html.has-custom-cursor * {
-  cursor: none !important;
-}

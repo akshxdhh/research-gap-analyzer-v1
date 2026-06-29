@@ -38,9 +38,12 @@ def process_document_task(self, file_id: str, temp_path: str, safe_filename: str
         db.commit()
         publish_status(file_id, "extracting", 10.0)
 
+        logger.info(f"[{file_id}] Upload Started. Chunking PDF...")
         # Chunking
         processor = PDFProcessor()
         chunks = processor.process_pdf(temp_path, paper_id=file_id)
+        
+        logger.info(f"[{file_id}] Chunking completed. Extracted {len(chunks)} chunks.")
 
         paper.processing_status = "chunking"
         paper.processing_progress = 40.0
@@ -57,10 +60,14 @@ def process_document_task(self, file_id: str, temp_path: str, safe_filename: str
         cloud_url = None
         destination_name = f"{file_id}.pdf"
         try:
+            logger.info(f"[{file_id}] Uploading to Supabase Cloud Storage...")
             storage = SupabaseStorage()
             cloud_url = storage.upload_pdf(temp_path, destination_name)
+            if not cloud_url:
+                raise Exception("Upload failed, empty URL returned")
+            logger.info(f"[{file_id}] Cloud storage upload verified: {cloud_url}")
         except Exception as e:
-            logger.warning(f"Supabase upload failed: {e}")
+            logger.warning(f"[{file_id}] Supabase upload failed: {e}. Falling back to local storage.")
             from pathlib import Path
             import shutil
             uploads_dir = Path("./uploads")
@@ -76,7 +83,9 @@ def process_document_task(self, file_id: str, temp_path: str, safe_filename: str
         publish_status(file_id, "embedding", 60.0)
 
         local_rag = get_local_rag()
+        logger.info(f"[{file_id}] Embedding {len(chunks)} chunks into Qdrant...")
         local_rag.index_chunks(chunks, collection_name=settings.vector_collection_name)
+        logger.info(f"[{file_id}] Embedding and indexing verified.")
 
         # Ready
         paper.processing_status = "ready"
@@ -101,6 +110,9 @@ def process_document_task(self, file_id: str, temp_path: str, safe_filename: str
             db.commit()
             publish_status(file_id, "error", paper.processing_progress, error_message=error_msg)
         
-        raise self.retry(exc=exc, countdown=60)
+        # Exponential backoff (retry after 1s, 2s, 4s, etc)
+        retry_delay = 2 ** self.request.retries
+        logger.info(f"[{file_id}] Retrying in {retry_delay}s... (Attempt {self.request.retries + 1}/{self.max_retries})")
+        raise self.retry(exc=exc, countdown=retry_delay)
     finally:
         db.close()

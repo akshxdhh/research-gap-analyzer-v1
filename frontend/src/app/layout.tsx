@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "AI-driven literature synthesis and gap inference.",
 };
 
-import CustomCursor from "@/components/interactions/CustomCursor";
+
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <CustomCursor />
+
         {children}
         <Toaster position="bottom-right" theme="dark" />
       </body>

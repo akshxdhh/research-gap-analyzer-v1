@@ -9,7 +9,6 @@ import {
   Users, ExternalLink, Activity, Menu, X
 } from "lucide-react";
 
-import Magnetic from "@/components/interactions/Magnetic";
 import SpotlightCard from "@/components/interactions/SpotlightCard";
 
 // --- Components ---
@@ -121,7 +120,6 @@ export default function LandingPage() {
           <div className="hidden md:flex gap-4 items-center">
             <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-cursor="hover">Features</Link>
             <Link href="#architecture" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" data-cursor="hover">Architecture</Link>
-            <Magnetic intensity={0.2}>
               <Link 
                 href="/dashboard"
                 className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all flex items-center gap-2 glow-primary shadow-lg shadow-primary/20"
@@ -129,7 +127,6 @@ export default function LandingPage() {
               >
                 Dashboard <ArrowRight className="w-4 h-4" />
               </Link>
-            </Magnetic>
           </div>
 
           {/* Mobile Nav Toggle */}
@@ -203,18 +200,14 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4">
               <div className="w-full sm:w-auto @media(hover:hover):block">
-                <Magnetic intensity={0.3}>
                   <Link href="/dashboard" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 glow-primary shadow-[0_0_40px_rgba(139,92,246,0.3)]">
                     Start Research <ArrowRight className="w-5 h-5" />
                   </Link>
-                </Magnetic>
               </div>
               <div className="w-full sm:w-auto @media(hover:hover):block">
-                <Magnetic intensity={0.3}>
                   <a href="#workflow" data-cursor="hover" className="w-full sm:w-auto px-8 py-4 min-h-[48px] rounded-full glass font-semibold text-lg hover:bg-card-hover hover:scale-[1.02] transition-all flex items-center justify-center gap-2 border border-border/50">
                     Explore Workflow
                   </a>
-                </Magnetic>
               </div>
             </div>
           </motion.div>

@@ -78,6 +78,8 @@ class PaperModel(Base):
     authors = Column(JSON, default=list)
     year = Column(Integer)
     filename = Column(String(512), nullable=False)
+    content_hash = Column(String(64), nullable=True, unique=True)
+    file_size = Column(Integer, nullable=True)
     cloud_url = Column(Text, nullable=True)  # Store Supabase URL here
     chunk_count = Column(Integer, nullable=False, default=0)
     processing_status = Column(String(64), nullable=False, default="queued") # queued, extracting, embedding, ready, error
